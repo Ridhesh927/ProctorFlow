@@ -70,8 +70,9 @@ const authLimiter = rateLimit({
     message: { message: 'Too many login attempts. Try again in 15 minutes.' }
 });
 
-app.use('/api', apiLimiter);
-app.use('/api/auth', authLimiter);
+// Commented out for load testing
+// app.use('/api', apiLimiter);
+// app.use('/api/auth', authLimiter);
 
 // Routes
 const authRoutes = require('./src/routes/authRoutes');

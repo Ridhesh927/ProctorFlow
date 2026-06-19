@@ -63,6 +63,9 @@ npm install
 npm run dev
 ```
 
+### 4. Default Credentials
+When creating new students(manually added) from the dashboard, their default password is set to **`Test@123`**.
+
 ---
 
 ## 🔑 Environment Variables (`backend/.env`)
