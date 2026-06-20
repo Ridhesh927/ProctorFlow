@@ -7,27 +7,16 @@
   --surface: #1c1c1f;
   --surface-high: #27272a;
 
-<<<<<<< HEAD
-=======
   --sidebar-bg: rgba(18, 18, 18, 0.4);
   --header-bg: rgba(12, 12, 13, 0.4);
-
->>>>>>> 654e51cce038d1d0ca0f0804f2e322d82293bc6f
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
   --text-muted: #52525b;
 
-<<<<<<< HEAD
-  --accent: #eab308;
-  /* Gold/Yellow-500 */
-  --accent-soft: #422006;
-  --accent-text: #fef9c3;
-=======
   --accent: #d97706;
   /* Burnt Amber */
   --accent-soft: #451a03;
   --accent-text: #fef3c7;
->>>>>>> 654e51cce038d1d0ca0f0804f2e322d82293bc6f
 
   --border: #27272a;
   --border-focus: #52525b;
@@ -36,13 +25,8 @@
   --success: #22c55e;
 
   /* Typography */
-<<<<<<< HEAD
-  --font-display: 'Fraunces', serif;
-  --font-body: 'Public Sans', sans-serif;
-=======
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
->>>>>>> 654e51cce038d1d0ca0f0804f2e322d82293bc6f
 
   /* Spacing & Radii */
   --radius-sm: 4px;
@@ -97,14 +81,10 @@ body {
   background-blend-mode: soft-light;
 }
 
-<<<<<<< HEAD
-=======
 body.interview-solid-bg {
   background-color: #000;
   background-image: none;
 }
-
->>>>>>> 654e51cce038d1d0ca0f0804f2e322d82293bc6f
 h1,
 h2,
 h3,
