@@ -155,8 +155,8 @@ exports.generateInterview = async (req, res) => {
 
         const requestedCount = parseInt(questionCount, 10);
         const totalQuestionCount = Number.isNaN(requestedCount)
-            ? 20
-            : Math.min(40, Math.max(20, requestedCount));
+            ? 10
+            : Math.min(25, Math.max(10, requestedCount));
 
         if (!jobRoleTarget) return res.status(400).json({ error: 'Target job role is required' });
 
@@ -457,7 +457,7 @@ exports.generateInterview = async (req, res) => {
         }
         const allQuestions = results.flat().slice(0, totalQuestionCount);
 
-        const minimumAcceptableCount = Math.max(16, Math.ceil(totalQuestionCount * 0.8));
+        const minimumAcceptableCount = Math.max(8, Math.ceil(totalQuestionCount * 0.8));
         if (allQuestions.length < minimumAcceptableCount) {
             throw new Error(`AI generated too few valid questions (${allQuestions.length}). Please try again.`);
         }

@@ -11,8 +11,8 @@ interface InterviewPrepHubProps {
     standalone?: boolean;
 }
 
-const MIN_QUESTION_COUNT = 20;
-const MAX_QUESTION_COUNT = 40;
+const MIN_QUESTION_COUNT = 10;
+const MAX_QUESTION_COUNT = 25;
 
 interface Interview {
     id: number;
@@ -39,8 +39,8 @@ const InterviewPrepHub = ({ standalone = false }: InterviewPrepHubProps) => {
     // Generation State
     const [targetRole, setTargetRole] = useState('');
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-    const [questionCount, setQuestionCount] = useState<number>(20);
-    const [questionCountInput, setQuestionCountInput] = useState<string>('20');
+    const [questionCount, setQuestionCount] = useState<number>(10);
+    const [questionCountInput, setQuestionCountInput] = useState<string>('10');
     const [isGenerating, setIsGenerating] = useState(false);
     const [activeTab, setActiveTab] = useState<'practice' | 'history' | 'analytics'>('practice');
     const [activePracticeTab, setActivePracticeTab] = useState<'resume' | 'interview' | 'coding'>('resume');
@@ -385,7 +385,7 @@ const InterviewPrepHub = ({ standalone = false }: InterviewPrepHubProps) => {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Number of Questions (20 to 40)</label>
+                                        <label>Number of Questions (10 to 25)</label>
                                         <div className="question-count-control">
                                             <div className="question-count-top-row">
                                                 <input
@@ -555,7 +555,7 @@ const InterviewPrepHub = ({ standalone = false }: InterviewPrepHubProps) => {
                                     <Sparkles size={20} className="text-accent" />
                                     <div>
                                         <strong>Pro Tip:</strong>
-                                        <p>Tailor your "Target Job Role" to the specific position you're applying for. Personalized Mode blends role expectations with resume evidence, then generates a balanced set of 20 to 40 custom questions across DSA, Logical, Verbal, and Technical sections.</p>
+                                        <p>Tailor your "Target Job Role" to the specific position you're applying for. Personalized Mode blends role expectations with resume evidence, then generates a balanced set of 10 to 25 custom questions across DSA, Logical, Verbal, and Technical sections.</p>
                                     </div>
                                 </div>
                                 <div className="session-summary mt-8">
