@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const logger = require('../utils/logger');
@@ -79,8 +80,9 @@ exports.loginTeacher = async (req, res) => {
 
         const token = generateToken(teacher.id, 'teacher', !!teacher.is_main_admin);
 
-        // Store last token
-        await pool.query('UPDATE teachers SET last_token = ? WHERE id = ?', [token, teacher.id]);
+        // Store hashed token securely
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        await pool.query('UPDATE teachers SET last_token = ? WHERE id = ?', [hashedToken, teacher.id]);
         setAuthCookie(res, token);
 
         logger('LOGIN_TEACHER', `Teacher logged in: ${teacher.username} (${email})`, { id: teacher.id });
@@ -140,8 +142,9 @@ exports.loginStudent = async (req, res) => {
 
         const token = generateToken(student.id, 'student');
 
-        // Store last token
-        await pool.query('UPDATE students SET last_token = ? WHERE id = ?', [token, student.id]);
+        // Store hashed token securely
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+        await pool.query('UPDATE students SET last_token = ? WHERE id = ?', [hashedToken, student.id]);
         setAuthCookie(res, token);
 
         logger('LOGIN_STUDENT', `Student logged in: ${student.username} (${student.email})`, { id: student.id, prn: student.prn_number });
@@ -195,6 +198,12 @@ exports.changePassword = async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
         const user = rows[0];
+
+        // Block password changes for demo accounts
+        if (user.email === 'teacher@test.com' || user.email === 'student@test.com') {
+            return res.status(403).json({ message: 'Demo accounts cannot change their passwords.' });
+        }
+
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
             logger('CHANGE_PASSWORD_FAIL', `Incorrect old password for user ID: ${id} (${role})`);
@@ -255,11 +264,23 @@ exports.adminCreateStudent = async (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
+        let isDemoCreated = false;
+        if (req.user && req.user.role === 'teacher') {
+            const [teacherRows] = await pool.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
+            if (teacherRows.length > 0 && teacherRows[0].email === 'teacher@test.com') {
+                const [countRows] = await pool.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
+                if (countRows[0].count >= 3) {
+                    return res.status(403).json({ message: 'Demo teacher can only create up to 3 student accounts.' });
+                }
+                isDemoCreated = true;
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const [result] = await pool.query(
-            'INSERT INTO students (username, email, password, prn_number, department, year) VALUES (?, ?, ?, ?, ?, ?)',
-            [username, email, hashedPassword, prn_number, department || null, year || null]
+            'INSERT INTO students (username, email, password, prn_number, department, year, created_by_demo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, prn_number, department || null, year || null, isDemoCreated]
         );
 
         logger('ADMIN_CREATE_STUDENT', `Admin created student: ${username} (${email})`, { id: result.insertId, prn: prn_number });
@@ -285,6 +306,18 @@ exports.adminCreateBulkStudents = async (req, res) => {
             return res.status(400).json({ message: 'Students array is required' });
         }
 
+        let isDemoCreated = false;
+        if (req.user && req.user.role === 'teacher') {
+            const [teacherRows] = await pool.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
+            if (teacherRows.length > 0 && teacherRows[0].email === 'teacher@test.com') {
+                const [countRows] = await pool.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
+                if (countRows[0].count + students.length > 3) {
+                    return res.status(403).json({ message: `Demo teacher can only create up to 3 student accounts total. Current count: ${countRows[0].count}.` });
+                }
+                isDemoCreated = true;
+            }
+        }
+
         const results = { success: [], failed: [] };
 
         for (const student of students) {
@@ -298,8 +331,8 @@ exports.adminCreateBulkStudents = async (req, res) => {
 
                 const hashedPassword = await bcrypt.hash(password, 10);
                 const [result] = await pool.query(
-                    'INSERT INTO students (username, email, password, prn_number, department, year) VALUES (?, ?, ?, ?, ?, ?)',
-                    [username, email, hashedPassword, prn_number, department || null, year || null]
+                    'INSERT INTO students (username, email, password, prn_number, department, year, created_by_demo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [username, email, hashedPassword, prn_number, department || null, year || null, isDemoCreated]
                 );
 
                 results.success.push({ id: result.insertId, username, email, prn_number });
@@ -396,14 +429,27 @@ exports.deleteUser = async (req, res) => {
         }
 
         if (role === 'teacher') {
-            const [teacherRows] = await pool.query('SELECT is_main_admin FROM teachers WHERE id = ?', [id]);
+            const [teacherRows] = await pool.query('SELECT is_main_admin, email FROM teachers WHERE id = ?', [id]);
             if (!teacherRows.length) return res.status(404).json({ message: 'User not found' });
             if (teacherRows[0].is_main_admin) {
                 return res.status(403).json({ message: 'Main admin account cannot be deleted.' });
             }
+            if (teacherRows[0].email === 'teacher@test.com') {
+                return res.status(403).json({ message: 'Demo teacher account cannot be deleted.' });
+            }
+        } else if (role === 'student') {
+            const [studentRows] = await pool.query('SELECT email FROM students WHERE id = ?', [id]);
+            if (!studentRows.length) return res.status(404).json({ message: 'User not found' });
+            if (studentRows[0].email === 'student@test.com') {
+                return res.status(403).json({ message: 'Demo student account cannot be deleted.' });
+            }
         }
 
         const table = role === 'teacher' ? 'teachers' : 'students';
+        
+        // Ensure cascading notification deletion
+        await pool.query('DELETE FROM notifications WHERE user_id = ? AND user_type = ?', [id, role]);
+
         const [result] = await pool.query(`DELETE FROM ${table} WHERE id = ?`, [id]);
 
         if (result.affectedRows === 0) {
@@ -433,16 +479,28 @@ exports.bulkDeleteUsers = async (req, res) => {
         }
 
         if (role === 'teacher') {
-            const [mainAdmins] = await pool.query(
-                'SELECT id FROM teachers WHERE id IN (?) AND is_main_admin = TRUE',
+            const [protectedAdmins] = await pool.query(
+                'SELECT id FROM teachers WHERE id IN (?) AND (is_main_admin = TRUE OR email = "teacher@test.com")',
                 [ids]
             );
-            if (mainAdmins.length > 0) {
-                return res.status(403).json({ message: 'Main admin account cannot be deleted.' });
+            if (protectedAdmins.length > 0) {
+                return res.status(403).json({ message: 'Protected accounts (Main admin or Demo teacher) cannot be deleted.' });
+            }
+        } else if (role === 'student') {
+            const [protectedStudents] = await pool.query(
+                'SELECT id FROM students WHERE id IN (?) AND email = "student@test.com"',
+                [ids]
+            );
+            if (protectedStudents.length > 0) {
+                return res.status(403).json({ message: 'Demo student account cannot be deleted.' });
             }
         }
 
         const table = role === 'teacher' ? 'teachers' : 'students';
+        
+        // Ensure cascading notification deletion
+        await pool.query('DELETE FROM notifications WHERE user_id IN (?) AND user_type = ?', [ids, role]);
+
         const [result] = await pool.query(`DELETE FROM ${table} WHERE id IN (?)`, [ids]);
 
         logger('ADMIN_BULK_DELETE', `Admin bulk deleted ${result.affectedRows} ${role}s`);

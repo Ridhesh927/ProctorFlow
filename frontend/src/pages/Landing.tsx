@@ -120,8 +120,8 @@ const Landing = () => {
                     <p className="demo-title">Demo Testing Credentials</p>
                     <div className="cred-box">
                         <div className="cred-item">
-                            <span className="cred-role">Student</span>
-                            <span className="cred-detail">student@test.com</span>
+                            <span className="cred-role">Student (PRN)</span>
+                            <span className="cred-detail">TEST_STUDENT_001</span>
                             <span className="cred-pass">password123</span>
                         </div>
                         <div className="cred-item">

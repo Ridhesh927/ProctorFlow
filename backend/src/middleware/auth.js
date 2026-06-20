@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 
@@ -24,7 +25,9 @@ const authMiddleware = async (req, res, next) => {
             : 'SELECT last_token, FALSE as is_main_admin FROM students WHERE id = ?';
         const [rows] = await pool.query(query, [decoded.id]);
 
-        if (rows.length === 0 || rows[0].last_token !== token) {
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        if (rows.length === 0 || rows[0].last_token !== hashedToken) {
             return res.status(401).json({ message: 'Session expired or logged in on another device' });
         }
 

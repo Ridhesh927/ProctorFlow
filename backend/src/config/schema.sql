@@ -7,8 +7,9 @@ CREATE TABLE IF NOT EXISTS teachers (
     password VARCHAR(255) NOT NULL,
     is_main_admin BOOLEAN DEFAULT FALSE,
     is_blocked BOOLEAN DEFAULT FALSE,
-    last_token TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_token VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (last_token)
 );
 
 -- Students Table
@@ -21,10 +22,12 @@ CREATE TABLE IF NOT EXISTS students (
     department VARCHAR(255) DEFAULT NULL,
     year VARCHAR(50) DEFAULT NULL,
     is_blocked BOOLEAN DEFAULT FALSE,
+    created_by_demo BOOLEAN DEFAULT FALSE,
     resume_text LONGTEXT DEFAULT NULL,
     parsed_skills JSON DEFAULT NULL,
-    last_token TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_token VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (last_token)
 );
 
 -- Exams Table
@@ -49,6 +52,7 @@ CREATE TABLE IF NOT EXISTS exams (
     expires_at DATETIME NOT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (status),
     FOREIGN KEY (teacher_id) REFERENCES teachers (id) ON DELETE CASCADE
 );
 
@@ -76,6 +80,8 @@ CREATE TABLE IF NOT EXISTS exam_results (
     total_marks INT NOT NULL DEFAULT 0,
     completion_time INT NOT NULL, -- in seconds
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (exam_id),
+    INDEX (student_id),
     FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE
 );
@@ -94,6 +100,8 @@ CREATE TABLE IF NOT EXISTS exam_sessions (
         'completed',
         'terminated'
     ) DEFAULT 'active',
+    INDEX (student_id),
+    INDEX (exam_id),
     FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
     FOREIGN KEY (exam_id) REFERENCES exams (id) ON DELETE CASCADE
 );

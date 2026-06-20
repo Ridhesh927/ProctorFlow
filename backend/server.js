@@ -38,7 +38,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins,
+        origin: corsOptions.origin,
         methods: ['GET', 'POST'],
         credentials: true,
     }

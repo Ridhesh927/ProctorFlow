@@ -1,5 +1,6 @@
 const { pool } = require('../../src/config/db');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const getTestTeacherToken = async (isMainAdmin = false) => {
@@ -12,8 +13,9 @@ const getTestTeacherToken = async (isMainAdmin = false) => {
     );
     
     const token = jwt.sign({ id: result.insertId, role: 'teacher', isMainAdmin }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     
-    await pool.query('UPDATE teachers SET last_token = ? WHERE id = ?', [token, result.insertId]);
+    await pool.query('UPDATE teachers SET last_token = ? WHERE id = ?', [hashedToken, result.insertId]);
     
     return { token, id: result.insertId, email, password: 'password123' };
 };
@@ -29,8 +31,9 @@ const getTestStudentToken = async () => {
     );
     
     const token = jwt.sign({ id: result.insertId, role: 'student', isMainAdmin: false }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     
-    await pool.query('UPDATE students SET last_token = ? WHERE id = ?', [token, result.insertId]);
+    await pool.query('UPDATE students SET last_token = ? WHERE id = ?', [hashedToken, result.insertId]);
     
     return { token, id: result.insertId, email, prn, password: 'password123' };
 };

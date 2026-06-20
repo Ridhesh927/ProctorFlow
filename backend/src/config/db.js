@@ -34,6 +34,11 @@ const hasColumn = async (connection, tableName, columnName) => {
 };
 
 const ensureColumn = async (connection, tableName, columnName, definitionSql) => {
+    // Sanitize parameters to prevent dynamic SQL injection
+    if (!/^[a-zA-Z0-9_]+$/.test(tableName) || !/^[a-zA-Z0-9_]+$/.test(columnName)) {
+        throw new Error('Invalid table or column name in schema generation');
+    }
+
     const exists = await hasColumn(connection, tableName, columnName);
     if (!exists) {
         try {
@@ -58,14 +63,18 @@ const ensureSecurityColumns = async (connection) => {
         [currentDbName]
     );
 
-    if (!rows.length) {
-        try {
+    try {
+        if (!rows.length) {
             await connection.query(
                 'ALTER TABLE teachers ADD COLUMN is_main_admin BOOLEAN DEFAULT FALSE'
             );
-        } catch (err) {
-            if (err.code !== 'ER_DUP_FIELDNAME') throw err;
         }
+
+        // Added by the system: ensure the created_by_demo tracking column exists
+        await ensureColumn(connection, 'students', 'created_by_demo', 'BOOLEAN DEFAULT FALSE');
+
+    } catch (err) {
+        if (err.code !== 'ER_DUP_FIELDNAME') throw err;
     }
 };
 
@@ -179,27 +188,33 @@ const ensureTestAccounts = async (connection) => {
 
 const initDB = async () => {
     try {
-        const connection = await pool.getConnection();
-        console.log('Connected to MySQL Database.');
+        console.log('Connecting to MySQL Database for initialization...');
+        
+        // Use a dedicated multi-statement connection for schema initialization
+        const initConn = await mysql.createConnection({
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'root',
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME || 'exam_portal_v2',
+            multipleStatements: true
+        });
 
         const schemaPath = path.join(__dirname, 'schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
 
-        // Execute schema commands (splitting by semicolon)
-        const commands = schema.split(';').filter(cmd => cmd.trim());
-        for (const command of commands) {
-            await connection.query(command);
-        }
+        // Execute schema securely
+        await initConn.query(schema);
 
-        await ensureSecurityColumns(connection);
-        await ensureExamEnhancementSchema(connection);
-        await ensureMainAdminAccount(connection);
-        await ensureTestAccounts(connection);
+        await ensureSecurityColumns(initConn);
+        await ensureExamEnhancementSchema(initConn);
+        await ensureMainAdminAccount(initConn);
+        await ensureTestAccounts(initConn);
 
         console.log('Database initialized successfully.');
-        connection.release();
+        await initConn.end();
     } catch (error) {
-        console.error('Error initializing database:', error);
+        console.error('CRITICAL: Error initializing database:', error);
+        process.exit(1);
     }
 };
 
