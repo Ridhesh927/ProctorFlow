@@ -48,15 +48,21 @@ ExamPro AI is a comprehensive, state-of-the-art examination system designed for 
 - **MySQL Server**
 - **Groq API Key(s)** (at least 3 recommended for high-load rotation)
 
-### 2. Backend Setup
+### 2. Database Setup (Supabase / Local)
+The project is built to automatically initialize its own schema! 
+1. Create a new MySQL or PostgreSQL database (if using Supabase, use the connection string they provide).
+2. Add your database credentials to the `.env` file (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`).
+3. **Auto-Initialization:** The moment you start the backend server (`npm run dev` or `node server.js`), the `initDB()` function will run automatically. It will create all necessary tables, configure constraints, and inject the demo accounts for you.
+
+### 3. Backend Setup
 ```bash
 cd backend
 npm install
-# Create .env file (see Environment Variables section below)
+# Ensure .env is populated with DB and API keys
 npm run dev
 ```
 
-### 3. Frontend Setup
+### 4. Frontend Setup
 ```bash
 cd frontend
 npm install
