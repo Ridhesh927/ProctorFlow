@@ -30,20 +30,6 @@ const Login = () => {
       const trimmedIdentifier = identifier.trim();
       const trimmedPassword = password.trim();
 
-<<<<<<< HEAD
-    const trimmedIdentifier = identifier.trim().toLowerCase();
-    const trimmedPassword = password.trim();
-
-    if (!isStudent) {
-      if (trimmedIdentifier === demoTeacher.email.toLowerCase() && trimmedPassword === demoTeacher.pass) {
-        navigate('/teacher/dashboard');
-      } else {
-        setError('Invalid teacher credentials. Use teacher@demo.com / Teacher@123');
-      }
-    } else {
-      const isDemoId = demoStudent.ids.some(id => id.toLowerCase() === trimmedIdentifier);
-      if (isDemoId && trimmedPassword === demoStudent.pass) {
-=======
       const parsed = getLoginSchema(isStudent ? 'student' : 'teacher').safeParse({
         identifier: trimmedIdentifier,
         password: trimmedPassword,
@@ -80,12 +66,11 @@ const Login = () => {
       }
 
       // Store token and user data under role-specific keys
-      const role = isStudent ? 'student' : 'teacher';
-      setAuth(role, data.token, data.user);
+      const roleName = isStudent ? 'student' : 'teacher';
+      setAuth(roleName, data.token, data.user);
 
       // Navigate to appropriate dashboard
       if (isStudent) {
->>>>>>> 654e51cce038d1d0ca0f0804f2e322d82293bc6f
         navigate('/student/dashboard');
       } else {
         navigate('/teacher/dashboard');

@@ -110,6 +110,27 @@ const Landing = () => {
                         </motion.div>
                     ))}
                 </div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.5 }}
+                    className="demo-credentials"
+                >
+                    <p className="demo-title">Demo Testing Credentials</p>
+                    <div className="cred-box">
+                        <div className="cred-item">
+                            <span className="cred-role">Student</span>
+                            <span className="cred-detail">student@test.com</span>
+                            <span className="cred-pass">password123</span>
+                        </div>
+                        <div className="cred-item">
+                            <span className="cred-role">Teacher</span>
+                            <span className="cred-detail">teacher@test.com</span>
+                            <span className="cred-pass">password123</span>
+                        </div>
+                    </div>
+                </motion.div>
             </main>
 
             <footer className="landing-footer">
@@ -166,8 +187,9 @@ const Landing = () => {
                     justify-content: center;
                     align-items: center;
                     text-align: center;
-                    gap: 3rem;
+                    gap: 2rem;
                     padding-bottom: 2rem;
+                    margin-top: -2rem;
                 }
 
                 .hero-content h1 {
@@ -190,6 +212,56 @@ const Landing = () => {
                     width: 100%;
                     max-width: 900px;
                     justify-content: center;
+                }
+
+                .demo-credentials {
+                    margin-top: 1rem;
+                    background: var(--surface-low);
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-md);
+                    padding: 1.25rem 2rem;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                }
+
+                .demo-title {
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    margin-bottom: 1rem;
+                    font-weight: 600;
+                }
+
+                .cred-box {
+                    display: flex;
+                    gap: 3rem;
+                    justify-content: center;
+                }
+
+                .cred-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.25rem;
+                }
+
+                .cred-role {
+                    font-size: 0.75rem;
+                    color: var(--text-secondary);
+                }
+
+                .cred-detail {
+                    font-size: 0.95rem;
+                    color: var(--text-primary);
+                    font-family: monospace;
+                    background: var(--surface);
+                    padding: 0.25rem 0.5rem;
+                    border-radius: var(--radius-sm);
+                }
+
+                .cred-pass {
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
                 }
 
                 .role-card-wrapper {
