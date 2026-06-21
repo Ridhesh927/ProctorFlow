@@ -3,7 +3,7 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 
 // Path to the unified dataset CSV
-const CSV_PATH = path.join(__dirname, '../../../../csv/unified_exam_dataset.csv');
+const CSV_PATH = path.join(__dirname, '../../../csv/unified_exam_dataset.csv');
 
 // Known sections in the CSV (normalised for matching)
 const KNOWN_SECTIONS = [
