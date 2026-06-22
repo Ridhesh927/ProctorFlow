@@ -64,7 +64,6 @@ const ExamItemAnalysis = () => {
 
     if (!data) return <div className="p-8 text-center">Analysis not available.</div>;
 
-    const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
     return (
         <DashboardLayout userType="teacher">

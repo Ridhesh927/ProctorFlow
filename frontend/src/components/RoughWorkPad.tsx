@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eraser, Download, Maximize2, Minimize2, Move, X } from 'lucide-react';
+import { Eraser, Maximize2, Minimize2, Move, X } from 'lucide-react';
 
 interface RoughWorkPadProps {
     isOpen: boolean;

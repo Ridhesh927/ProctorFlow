@@ -268,8 +268,8 @@ const ManageJobs = () => {
                                     </div>
                                     <div className="posting-actions-group">
                                         <div className="status-indicator">
-                                            <div className={`dot ${job.status.toLowerCase()}`}></div>
-                                            {job.status}
+                                            <div className={`dot ${job.status?.toLowerCase() || 'open'}`}></div>
+                                            {job.status || 'Open'}
                                         </div>
                                         <button 
                                             className="delete-icon-btn" 
@@ -338,7 +338,7 @@ const ManageJobs = () => {
                                                         </div>
                                                     </td>
                                                     <td>{new Date(app.applied_at).toLocaleDateString()}</td>
-                                                    <td><span className={`status-pill ${app.status.toLowerCase()}`}>{app.status}</span></td>
+                                                    <td><span className={`status-pill ${app.status?.toLowerCase() || 'pending'}`}>{app.status || 'Pending'}</span></td>
                                                     <td>
                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                             {app.resume_filename ? (
