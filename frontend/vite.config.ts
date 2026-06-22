@@ -13,6 +13,19 @@ export default defineConfig({
       util: 'util',
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['framer-motion', 'lucide-react', 'recharts'],
+          editor: ['@monaco-editor/react'],
+          ai: ['face-api.js', 'three']
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api': {
