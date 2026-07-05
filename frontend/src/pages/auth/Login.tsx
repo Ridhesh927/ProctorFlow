@@ -105,7 +105,7 @@ const Login = () => {
           >
             <div className="auth-header">
               <h2>Sign In</h2>
-              <p style={{ color: '#a1a1aa' }}>Welcome back, {isStudent ? 'Student' : 'Teacher'}.</p>
+              <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {isStudent ? 'Student' : 'Teacher'}.</p>
             </div>
 
             <form className="auth-form" onSubmit={handleLogin}>
@@ -222,9 +222,9 @@ const Login = () => {
           width: 100%;
           max-width: 480px;
           padding: 3rem;
-          background: rgba(28, 28, 31, 0.95) !important;
+          background: var(--surface) !important;
           backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border: 1px solid var(--border) !important;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
         }
 
@@ -237,7 +237,7 @@ const Login = () => {
         .auth-header h2 {
           font-size: 2.5rem;
           margin-bottom: 0.5rem;
-          color: #f4f4f5 !important;
+          color: var(--text-primary) !important;
         }
 
         .auth-form {
@@ -268,7 +268,7 @@ const Login = () => {
         .form-group label {
           font-size: 0.875rem;
           font-weight: 600;
-          color: #a1a1aa !important;
+          color: var(--text-secondary) !important;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -283,7 +283,7 @@ const Login = () => {
           top: 50%;
           transform: translateY(-50%);
           background: none;
-          color: #71717a !important;
+          color: var(--text-muted) !important;
           border: none;
           cursor: pointer;
         }
