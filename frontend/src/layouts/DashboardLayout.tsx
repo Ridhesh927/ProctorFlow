@@ -141,7 +141,7 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
       <main className="main-content">
         <header className="content-header">
           <div className="header-search">
-            <span className="text-muted">Academic Session: 2025-26</span>
+            <span className="text-muted">Academic Session: {new Date().getFullYear()}-{String(new Date().getFullYear() + 1).slice(-2)}</span>
           </div>
           <div className="header-actions">
               <div className="dropdown-container">
