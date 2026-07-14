@@ -18,7 +18,7 @@ const Landing = () => {
         {
             id: 'student',
             title: 'Student',
-            description: "Your gateway to DES Pune University's online examinations. Stay organized and perform your best in every assessment.",
+            description: "Your gateway to online examinations. Stay organized and perform your best in every assessment.",
             icon: <GraduationCap size={40} />,
             color: 'var(--accent)',
             path: '/login?role=student'
