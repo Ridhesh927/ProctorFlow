@@ -202,7 +202,10 @@ const LiveProctoring = () => {
             fetchSessionsAndTimeline(selectedExamId);
         }, 15000);
 
-        const socket = io();
+        const token = localStorage.getItem('token') || localStorage.getItem('teacher_token') || '';
+        const socket = io({
+            auth: { token }
+        });
         socketRef.current = socket;
 
         const user = JSON.parse(localStorage.getItem('user') || '{}');

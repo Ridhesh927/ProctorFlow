@@ -17,6 +17,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^8.3.2",
+    "file-type": "^16.5.4",
     "groq-sdk": "^0.37.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
@@ -30,11 +31,11 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "eslint": "^10.2.0",
-    "nodemon": "^3.1.4",
     "jest": "^29.7.0",
-    "supertest": "^7.0.0",
-    "cross-env": "^7.0.3"
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
   },
   "jest": {
     "globalSetup": "./tests/globalSetup.js"

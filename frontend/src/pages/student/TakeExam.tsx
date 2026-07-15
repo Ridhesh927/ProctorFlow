@@ -459,7 +459,9 @@ const TakeExam = () => {
           setSessionId(newSessionId);
 
           // Initialize Socket and Signaling
-          const socket = io();
+          const socket = io({
+            auth: { token }
+          });
           socketRef.current = socket;
           const user = getUser('student') || {};
 
