@@ -25,9 +25,12 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024
 const validateFileType = async (req, res, next) => {
     if (!req.file) return next();
 
+    // Securely resolve the path to prevent CodeQL path traversal alerts
+    const safePath = path.join(uploadDir, path.basename(req.file.filename));
+
     try {
         const fileType = await import('file-type');
-        const type = await fileType.fileTypeFromFile(req.file.path);
+        const type = await fileType.fileTypeFromFile(safePath);
         
         const allowedMimeTypes = [
             'application/pdf', 
@@ -36,13 +39,13 @@ const validateFileType = async (req, res, next) => {
         ];
 
         if (!type || !allowedMimeTypes.includes(type.mime)) {
-            fs.unlinkSync(req.file.path); // Delete invalid file
+            if (fs.existsSync(safePath)) fs.unlinkSync(safePath); // Delete invalid file
             return res.status(400).json({ message: 'Invalid file type. Only true PDF, DOC, DOCX files are allowed.' });
         }
         
         next();
     } catch (err) {
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file && fs.existsSync(safePath)) fs.unlinkSync(safePath);
         return res.status(500).json({ message: 'Error validating file type' });
     }
 };
