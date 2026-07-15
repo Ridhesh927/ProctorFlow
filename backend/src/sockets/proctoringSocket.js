@@ -1,10 +1,51 @@
 const { pool } = require('../config/db');
+const jwt = require('jsonwebtoken');
 
 module.exports = (io) => {
-    io.on('connection', (socket) => {
-        console.log('User connected:', socket.id);
+    // 1. Socket Authentication Middleware
+    io.use((socket, next) => {
+        const token = socket.handshake.auth.token;
 
-        socket.on('join-room', ({ examId, userId, role, name, sessionId }) => {
+        if (!token) {
+            return next(new Error('Authentication error: Token missing'));
+        }
+
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            socket.user = decoded; 
+            next();
+        } catch (err) {
+            return next(new Error('Authentication error: Invalid token'));
+        }
+    });
+
+    io.on('connection', (socket) => {
+        console.log(`Authenticated user ${socket.user.id} (${socket.user.role}) connected on socket ${socket.id}`);
+
+        socket.on('join-room', async ({ examId, sessionId }) => {
+            const userId = socket.user.id;
+            const role = socket.user.role;
+            const name = socket.user.name || socket.user.username || 'User';
+
+            // Server-side Authorization Check
+            if (role === 'student') {
+                // Verify via DB if student is actually enrolled/has an active session
+                try {
+                    const [session] = await pool.query(
+                        'SELECT id FROM exam_sessions WHERE id = ? AND student_id = ? AND exam_id = ?', 
+                        [sessionId, userId, examId]
+                    );
+                    if (session.length === 0) {
+                        return socket.disconnect();
+                    }
+                } catch (err) {
+                    console.error('Error verifying exam session:', err);
+                    return socket.disconnect();
+                }
+            } else if (role !== 'teacher' && role !== 'admin') {
+                 return socket.disconnect();
+            }
+
             socket.join(`exam-${examId}`);
             socket.userId = userId;
             socket.role = role;
@@ -21,14 +62,14 @@ module.exports = (io) => {
         });
 
         // Explicit Leave Exam
-        socket.on('leave-exam', async ({ examId, userId, sessionId }) => {
+        socket.on('leave-exam', async ({ examId, sessionId }) => {
+            const userId = socket.user.id;
             console.log(`Student ${userId} explicitly left exam ${examId}`);
 
-            // Mark session as terminated in DB
             try {
                 await pool.query(
-                    'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND status = "active"',
-                    [sessionId]
+                    'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND student_id = ? AND status = "active"',
+                    [sessionId, userId]
                 );
             } catch (err) {
                 console.error('Error terminating session on leave:', err);
@@ -45,6 +86,8 @@ module.exports = (io) => {
 
         // Proctoring Warnings
         socket.on('send-warning', ({ studentId, message, type }) => {
+            if (socket.user.role !== 'teacher' && socket.user.role !== 'admin') return;
+
             const sockets = io.sockets.adapter.rooms.get(`exam-${socket.examId}`);
             if (sockets) {
                 for (const socketId of sockets) {
@@ -57,21 +100,22 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('student-warning-trigger', ({ examId, userId, warningType }) => {
+        socket.on('student-warning-trigger', ({ examId, warningType }) => {
+            if (socket.user.role !== 'student') return;
+            const userId = socket.user.id;
             socket.to(`exam-${examId}`).emit('student-warning-alert', { userId, warningType });
         });
 
         // Face violation handler
         socket.on('face-violation', async ({ sessionId, faceCount, warningNumber, timestamp }) => {
+            if (socket.user.role !== 'student') return;
+            const studentId = socket.user.id;
             console.log(`Face violation: Session ${sessionId}, ${faceCount} faces detected, Warning ${warningNumber}/3`);
 
-            // Broadcast to teachers in the exam room
             try {
-                const [session] = await pool.query('SELECT exam_id, student_id FROM exam_sessions WHERE id = ?', [sessionId]);
+                const [session] = await pool.query('SELECT exam_id FROM exam_sessions WHERE id = ? AND student_id = ?', [sessionId, studentId]);
                 if (session.length > 0) {
                     const examId = session[0].exam_id;
-                    const studentId = session[0].student_id;
-
                     socket.to(`exam-${examId}`).emit('student-face-violation', {
                         sessionId,
                         studentId,
@@ -86,12 +130,16 @@ module.exports = (io) => {
         });
 
         // Rough Work Sync
-        socket.on('rough-work-update', ({ examId, userId, content }) => {
+        socket.on('rough-work-update', ({ examId, content }) => {
+            if (socket.user.role !== 'student') return;
+            const userId = socket.user.id;
             socket.to(`exam-${examId}`).emit('student-rough-work', { userId, content });
         });
 
         // Voice Intervention
         socket.on('voice-intervention', ({ studentId, message }) => {
+            if (socket.user.role !== 'teacher' && socket.user.role !== 'admin') return;
+
             const sockets = io.sockets.adapter.rooms.get(`exam-${socket.examId}`);
             if (sockets) {
                 for (const socketId of sockets) {
@@ -108,12 +156,10 @@ module.exports = (io) => {
             if (socket.role === 'student' && socket.sessionId) {
                 console.log(`Student ${socket.userId} disconnected from session ${socket.sessionId}`);
 
-                // Optional: Mark as terminated on disconnect after a short timeout? 
-                // Or just notify teacher. The report says "automatically" mark terminated.
                 try {
                     await pool.query(
-                        'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND status = "active"',
-                        [socket.sessionId]
+                        'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND student_id = ? AND status = "active"',
+                        [socket.sessionId, socket.userId]
                     );
                 } catch (err) {
                     console.error('Error terminating session on disconnect:', err);
