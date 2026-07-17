@@ -1202,6 +1202,16 @@ exports.startExamSession = async (req, res) => {
 exports.logWarning = async (req, res) => {
     try {
         const { sessionId, warningType, message } = req.body;
+        const studentId = req.user.id;
+
+        const [sessionCheck] = await pool.query(
+            'SELECT id FROM exam_sessions WHERE id = ? AND student_id = ? AND status = "active"',
+            [sessionId, studentId]
+        );
+
+        if (sessionCheck.length === 0) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid or inactive session.' });
+        }
 
         await pool.query(
             'INSERT INTO exam_warnings (session_id, warning_type, message) VALUES (?, ?, ?)',
@@ -1256,6 +1266,16 @@ exports.logWarning = async (req, res) => {
 exports.updateResponse = async (req, res) => {
     try {
         const { sessionId, questionId, selectedOption, timeSpent } = req.body;
+        const studentId = req.user.id;
+
+        const [sessionCheck] = await pool.query(
+            'SELECT id FROM exam_sessions WHERE id = ? AND student_id = ? AND status = "active"',
+            [sessionId, studentId]
+        );
+
+        if (sessionCheck.length === 0) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid or inactive session.' });
+        }
 
         // Upsert response
         const [existing] = await pool.query(
@@ -2087,6 +2107,17 @@ exports.saveExamSnapshot = async (req, res) => {
         const { sessionId, snapshotData } = req.body;
         if (!sessionId || !snapshotData) {
             return res.status(400).json({ message: 'Missing sessionId or snapshotData' });
+        }
+
+        const studentId = req.user.id;
+
+        const [sessionCheck] = await pool.query(
+            'SELECT id FROM exam_sessions WHERE id = ? AND student_id = ? AND status = "active"',
+            [sessionId, studentId]
+        );
+
+        if (sessionCheck.length === 0) {
+            return res.status(403).json({ error: 'Unauthorized: Invalid or inactive session.' });
         }
 
         await pool.query(
