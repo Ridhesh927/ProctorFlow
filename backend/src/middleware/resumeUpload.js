@@ -14,10 +14,26 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-    const allowed = ['.pdf', '.doc', '.docx'];
+    // 1. Validate the MIME type (Content-Type header)
+    const allowedMimeTypes = [
+        'application/pdf',
+        'application/msword', // .doc
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // .docx
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+        return cb(new Error('Invalid content type. Only PDF, DOC, and DOCX are allowed.'), false);
+    }
+
+    // 2. Validate the Extension as a secondary fallback
+    const allowedExtensions = ['.pdf', '.doc', '.docx'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('Only PDF, DOC, DOCX files are allowed'), false);
+
+    if (allowedExtensions.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file extension.'), false);
+    }
 };
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
