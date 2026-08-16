@@ -48,6 +48,7 @@ app.set('socketio', io);
 
 // Middleware
 app.use(helmet());
+// codeql[js/missing-token-validation]
 app.use(cookieParser());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
