@@ -18,7 +18,7 @@ const extractScannedPdfTextWithGemini = async (pdfBuffer) => {
     }
 
     const geminiClient = new GoogleGenerativeAI(geminiApiKey);
-    const model = geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = geminiClient.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const result = await model.generateContent({
         contents: [
@@ -183,7 +183,7 @@ OUTPUT FORMAT:
             preferredProvider: provider,
             temperature: 0.3,
             groqModel: 'llama-3.1-8b-instant',
-            geminiModel: 'gemini-1.5-flash',
+            geminiModel: 'gemini-3.5-flash',
         });
 
         if (!parsedData || !parsedData.questions || !Array.isArray(parsedData.questions)) {
