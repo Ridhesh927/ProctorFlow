@@ -20,6 +20,11 @@ const createExam = Joi.object({
             marks: Joi.number().integer().min(1).optional(),
             difficulty: Joi.string().allow('', null).optional(),
             topic: Joi.string().allow('', null).optional()
+        }).custom((value, helpers) => {
+            if (value.correct_answer >= value.options.length) {
+                return helpers.message(`correct_answer must be less than the number of options (${value.options.length})`);
+            }
+            return value;
         })
     ).optional()
 });
@@ -32,7 +37,7 @@ const updateExam = Joi.object({
     target_department: Joi.string().allow('', null).optional(),
     target_year: Joi.string().allow('', null).optional(),
     status: Joi.string().valid('Draft', 'Published').optional(),
-    expires_at: Joi.date().iso().required(),
+    expires_at: Joi.date().iso().optional(),
     questions: Joi.array().items(
         Joi.object({
             question: Joi.string().required(),
@@ -41,6 +46,11 @@ const updateExam = Joi.object({
             marks: Joi.number().integer().min(1).optional(),
             difficulty: Joi.string().allow('', null).optional(),
             topic: Joi.string().allow('', null).optional()
+        }).custom((value, helpers) => {
+            if (value.correct_answer >= value.options.length) {
+                return helpers.message(`correct_answer must be less than the number of options (${value.options.length})`);
+            }
+            return value;
         })
     ).optional()
 });
