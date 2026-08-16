@@ -228,7 +228,7 @@ const callGemini = async ({ prompt, jsonMode, temperature, maxTokens, model }) =
     }
 
     const generativeModel = geminiClient.getGenerativeModel({
-        model: model || 'gemini-1.5-flash',
+        model: model || 'gemini-3.5-flash',
     });
 
     const result = await generativeModel.generateContent({

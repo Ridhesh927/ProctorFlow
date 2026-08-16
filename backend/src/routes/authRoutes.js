@@ -3,10 +3,12 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 
 const { authMiddleware, roleMiddleware, mainAdminMiddleware } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+const authValidation = require('../validations/auth.validation');
 
 // Public routes - Login only
-router.post('/teacher/login', authController.loginTeacher);
-router.post('/student/login', authController.loginStudent);
+router.post('/teacher/login', validate(authValidation.teacherLogin), authController.loginTeacher);
+router.post('/student/login', validate(authValidation.studentLogin), authController.loginStudent);
 
 // Public registration disabled - only admins can create accounts
 // router.post('/teacher/register', authController.registerTeacher);
@@ -14,15 +16,15 @@ router.post('/student/login', authController.loginStudent);
 
 // Protected routes
 router.post('/logout', authMiddleware, authController.logout);
-router.put('/change-password', authMiddleware, authController.changePassword);
+router.put('/change-password', authMiddleware, validate(authValidation.changePassword), authController.changePassword);
 
 // Admin-only routes (main admin only for teachers)
-router.post('/admin/create-teacher', authMiddleware, mainAdminMiddleware, authController.adminCreateTeacher);
+router.post('/admin/create-teacher', authMiddleware, mainAdminMiddleware, validate(authValidation.createTeacher), authController.adminCreateTeacher);
 router.post('/admin/bulk-teachers', authMiddleware, mainAdminMiddleware, authController.adminCreateBulkTeachers);
 router.get('/admin/teachers', authMiddleware, mainAdminMiddleware, authController.getAllTeachers);
 
 // Teacher routes (all teachers can manage students)
-router.post('/admin/create-student', authMiddleware, roleMiddleware(['teacher']), authController.adminCreateStudent);
+router.post('/admin/create-student', authMiddleware, roleMiddleware(['teacher']), validate(authValidation.createStudent), authController.adminCreateStudent);
 router.post('/admin/bulk-students', authMiddleware, roleMiddleware(['teacher']), authController.adminCreateBulkStudents);
 router.get('/admin/students', authMiddleware, roleMiddleware(['teacher']), authController.getAllStudents);
 router.delete('/admin/user/:role/:id', authMiddleware, (req, res, next) => {

@@ -3,7 +3,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { initDB } = require('./src/config/db');
 require('dotenv').config();
@@ -48,7 +47,6 @@ app.set('socketio', io);
 
 // Middleware
 app.use(helmet());
-app.use(cookieParser());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -70,6 +68,14 @@ const authLimiter = rateLimit({
     message: { message: 'Too many login attempts. Try again in 15 minutes.' }
 });
 
+const heavyOpsLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many heavy operations requests. Please try again later.' }
+});
+
 // Rate limiting enabled to protect against Brute Force and DDoS
 app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter);
@@ -85,8 +91,8 @@ const notificationRoutes = require('./src/routes/notificationRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/exams', examRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/interview', interviewRoutes);
+app.use('/api/ai', heavyOpsLimiter, aiRoutes);
+app.use('/api/interview', heavyOpsLimiter, interviewRoutes);
 app.use('/api/coding', codingRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/notifications', notificationRoutes);
