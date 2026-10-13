@@ -3,6 +3,24 @@ const { generateText } = require('../utils/aiClient');
 const path = require('path');
 const fs = require('fs');
 
+const RESUMES_UPLOAD_ROOT = path.resolve(__dirname, '../../uploads/resumes');
+
+const safeUnlinkResume = (filename) => {
+    if (!filename) return;
+
+    // Only allow simple filenames (no path segments)
+    if (path.basename(filename) !== filename) return;
+
+    const resolvedPath = path.resolve(RESUMES_UPLOAD_ROOT, filename);
+    const isWithinRoot =
+        resolvedPath === RESUMES_UPLOAD_ROOT ||
+        resolvedPath.startsWith(RESUMES_UPLOAD_ROOT + path.sep);
+
+    if (!isWithinRoot) return;
+
+    fs.unlink(resolvedPath, () => {});
+};
+
 // Auto-add resume_filename column
 if (process.env.NODE_ENV !== 'test') {
     (async () => {
@@ -91,14 +109,14 @@ const jobController = {
             const expiresAt = jobInfo[0].expires_at;
             
             if (expiresAt && new Date() > new Date(expiresAt)) {
-                if (resume_filename) fs.unlink(path.join(__dirname, '../../uploads/resumes', resume_filename), () => {});
+                safeUnlinkResume(resume_filename);
                 return res.status(400).json({ message: 'This job posting has expired.' });
             }
 
             if (maxApps !== null) {
                 const [countInfo] = await pool.query("SELECT COUNT(*) as cnt FROM job_applications WHERE job_id = ? AND status = 'Applied'", [jobId]);
                 if (countInfo[0].cnt >= maxApps) {
-                    if (resume_filename) fs.unlink(path.join(__dirname, '../../uploads/resumes', resume_filename), () => {});
+                    safeUnlinkResume(resume_filename);
                     return res.status(400).json({ message: 'Application limit reached for this position.' });
                 }
             }
@@ -110,9 +128,7 @@ const jobController = {
 
             if (existing.length > 0) {
                 // Clean up uploaded file if already applied
-                if (resume_filename) {
-                    fs.unlink(path.join(__dirname, '../../uploads/resumes', resume_filename), () => {});
-                }
+                safeUnlinkResume(resume_filename);
                 return res.status(400).json({ message: 'You have already applied for this position' });
             }
 
