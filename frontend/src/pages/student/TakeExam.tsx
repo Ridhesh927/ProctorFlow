@@ -23,6 +23,24 @@ import RoughWorkPad from '../../components/RoughWorkPad';
 
 const TakeExam = () => {
   const { id } = useParams();
+
+  const getSecureRandomInt = (maxExclusive: number): number => {
+    if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) {
+      throw new Error('maxExclusive must be a positive integer');
+    }
+
+    const random = new Uint32Array(1);
+    const maxUint32 = 0x100000000; // 2^32
+    const limit = maxUint32 - (maxUint32 % maxExclusive);
+
+    let value: number;
+    do {
+      window.crypto.getRandomValues(random);
+      value = random[0];
+    } while (value >= limit);
+
+    return value % maxExclusive;
+  };
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState<number>(3600); // default, will be overridden by exam data
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -518,7 +536,7 @@ const TakeExam = () => {
 
         } catch (err) {
           console.error("Failed to start session", err);
-          setSessionId(window.crypto.getRandomValues(new Uint32Array(1))[0] % 1000);
+          setSessionId(getSecureRandomInt(1000));
         }
       }
 
