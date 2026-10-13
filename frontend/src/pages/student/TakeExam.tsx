@@ -518,7 +518,7 @@ const TakeExam = () => {
 
         } catch (err) {
           console.error("Failed to start session", err);
-          setSessionId(Math.floor(Math.random() * 1000));
+          setSessionId(window.crypto.getRandomValues(new Uint32Array(1))[0] % 1000);
         }
       }
 
