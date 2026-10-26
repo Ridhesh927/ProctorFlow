@@ -40,7 +40,9 @@ const io = new Server(server, {
         origin: corsOptions.origin,
         methods: ['GET', 'POST'],
         credentials: true,
-    }
+    },
+    pingTimeout: 30000,
+    pingInterval: 10000
 });
 
 app.set('socketio', io);

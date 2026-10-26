@@ -1,10 +1,39 @@
 const { pool } = require('../config/db');
 const jwt = require('jsonwebtoken');
 
+// Track pending terminations for disconnected student sessions: sessionId -> Timeout
+const pendingTerminations = new Map();
+
+// Helper to verify role
+const verifyRole = (socket, allowedRoles) => {
+    if (!socket.user || !allowedRoles.includes(socket.user.role)) {
+        return false;
+    }
+    return true;
+};
+
 module.exports = (io) => {
     // 1. Socket Authentication Middleware
     io.use((socket, next) => {
-        const token = socket.handshake.auth.token;
+        let token = socket.handshake.auth?.token;
+
+        if (!token && socket.handshake.headers?.cookie) {
+            const cookies = socket.handshake.headers.cookie.split(';');
+            for (const cookie of cookies) {
+                const [key, val] = cookie.trim().split('=');
+                if (key === 'token') {
+                    token = decodeURIComponent(val);
+                    break;
+                }
+            }
+        }
+
+        if (!token && socket.handshake.headers?.authorization) {
+            const parts = socket.handshake.headers.authorization.split(' ');
+            if (parts.length === 2 && parts[0] === 'Bearer') {
+                token = parts[1];
+            }
+        }
 
         if (!token) {
             return next(new Error('Authentication error: Token missing'));
@@ -29,6 +58,9 @@ module.exports = (io) => {
 
             // Server-side Authorization Check
             if (role === 'student') {
+                if (!sessionId) {
+                    return socket.disconnect();
+                }
                 // Verify via DB if student is actually enrolled/has an active session
                 try {
                     const [session] = await pool.query(
@@ -42,8 +74,31 @@ module.exports = (io) => {
                     console.error('Error verifying exam session:', err);
                     return socket.disconnect();
                 }
-            } else if (role !== 'teacher' && role !== 'admin') {
-                 return socket.disconnect();
+
+                // If reconnecting within grace period, cancel any pending termination
+                if (pendingTerminations.has(sessionId)) {
+                    clearTimeout(pendingTerminations.get(sessionId));
+                    pendingTerminations.delete(sessionId);
+                    console.log(`Student ${userId} reconnected to session ${sessionId}. Cancelled pending termination timer.`);
+                }
+            } else if (role === 'teacher') {
+                // Verify teacher owns the exam or is authorized
+                try {
+                    const [examCheck] = await pool.query(
+                        'SELECT id FROM exams WHERE id = ? AND created_by = ?',
+                        [examId, userId]
+                    );
+                    if (examCheck.length === 0) {
+                        if (socket.user.role !== 'admin') {
+                            return socket.disconnect();
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error verifying teacher exam ownership:', err);
+                    return socket.disconnect();
+                }
+            } else if (role !== 'admin') {
+                return socket.disconnect();
             }
 
             socket.join(`exam-${examId}`);
@@ -63,19 +118,27 @@ module.exports = (io) => {
 
         // Explicit Leave Exam
         socket.on('leave-exam', async ({ examId, sessionId }) => {
+            if (!verifyRole(socket, ['student'])) return;
             const userId = socket.user.id;
+            const targetSessionId = sessionId || socket.sessionId;
             console.log(`Student ${userId} explicitly left exam ${examId}`);
+
+            // Clear any pending grace period timer for this session
+            if (pendingTerminations.has(targetSessionId)) {
+                clearTimeout(pendingTerminations.get(targetSessionId));
+                pendingTerminations.delete(targetSessionId);
+            }
 
             try {
                 await pool.query(
                     'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND student_id = ? AND status = "active"',
-                    [sessionId, userId]
+                    [targetSessionId, userId]
                 );
             } catch (err) {
                 console.error('Error terminating session on leave:', err);
             }
 
-            socket.to(`exam-${examId}`).emit('student-left-exam', { userId, sessionId });
+            socket.to(`exam-${examId}`).emit('student-left-exam', { userId, sessionId: targetSessionId });
             socket.leave(`exam-${examId}`);
         });
 
@@ -86,7 +149,7 @@ module.exports = (io) => {
 
         // Proctoring Warnings
         socket.on('send-warning', ({ studentId, message, type }) => {
-            if (socket.user.role !== 'teacher' && socket.user.role !== 'admin') return;
+            if (!verifyRole(socket, ['teacher', 'admin'])) return;
 
             const sockets = io.sockets.adapter.rooms.get(`exam-${socket.examId}`);
             if (sockets) {
@@ -101,14 +164,15 @@ module.exports = (io) => {
         });
 
         socket.on('student-warning-trigger', ({ examId, warningType }) => {
-            if (socket.user.role !== 'student') return;
+            if (!verifyRole(socket, ['student'])) return;
+            if (socket.examId && String(socket.examId) !== String(examId)) return;
             const userId = socket.user.id;
             socket.to(`exam-${examId}`).emit('student-warning-alert', { userId, warningType });
         });
 
         // Face violation handler
         socket.on('face-violation', async ({ sessionId, faceCount, warningNumber, timestamp }) => {
-            if (socket.user.role !== 'student') return;
+            if (!verifyRole(socket, ['student'])) return;
             const studentId = socket.user.id;
             console.log(`Face violation: Session ${sessionId}, ${faceCount} faces detected, Warning ${warningNumber}/3`);
 
@@ -131,14 +195,15 @@ module.exports = (io) => {
 
         // Rough Work Sync
         socket.on('rough-work-update', ({ examId, content }) => {
-            if (socket.user.role !== 'student') return;
+            if (!verifyRole(socket, ['student'])) return;
+            if (socket.examId && String(socket.examId) !== String(examId)) return;
             const userId = socket.user.id;
             socket.to(`exam-${examId}`).emit('student-rough-work', { userId, content });
         });
 
         // Voice Intervention
         socket.on('voice-intervention', ({ studentId, message }) => {
-            if (socket.user.role !== 'teacher' && socket.user.role !== 'admin') return;
+            if (!verifyRole(socket, ['teacher', 'admin'])) return;
 
             const sockets = io.sockets.adapter.rooms.get(`exam-${socket.examId}`);
             if (sockets) {
@@ -152,20 +217,37 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('disconnect', async () => {
+        // Disconnect with Grace Period
+        socket.on('disconnect', () => {
             if (socket.role === 'student' && socket.sessionId) {
-                console.log(`Student ${socket.userId} disconnected from session ${socket.sessionId}`);
+                const studentId = socket.userId;
+                const sessionId = socket.sessionId;
+                const examId = socket.examId;
 
-                try {
-                    await pool.query(
-                        'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND student_id = ? AND status = "active"',
-                        [socket.sessionId, socket.userId]
-                    );
-                } catch (err) {
-                    console.error('Error terminating session on disconnect:', err);
+                console.log(`Student ${studentId} temporarily disconnected from session ${sessionId}. Starting 30s grace period.`);
+
+                socket.to(`exam-${examId}`).emit('student-disconnected', { userId: studentId, sessionId });
+
+                // Schedule grace period timer (30 seconds)
+                if (pendingTerminations.has(sessionId)) {
+                    clearTimeout(pendingTerminations.get(sessionId));
                 }
 
-                socket.to(`exam-${socket.examId}`).emit('student-disconnected', { userId: socket.userId, sessionId: socket.sessionId });
+                const timer = setTimeout(async () => {
+                    try {
+                        console.log(`Grace period expired for session ${sessionId}. Terminating exam session.`);
+                        await pool.query(
+                            'UPDATE exam_sessions SET status = "terminated", end_time = CURRENT_TIMESTAMP WHERE id = ? AND student_id = ? AND status = "active"',
+                            [sessionId, studentId]
+                        );
+                    } catch (err) {
+                        console.error('Error terminating session on disconnect expiry:', err);
+                    } finally {
+                        pendingTerminations.delete(sessionId);
+                    }
+                }, 30000);
+
+                pendingTerminations.set(sessionId, timer);
             }
             console.log('User disconnected:', socket.id);
         });
