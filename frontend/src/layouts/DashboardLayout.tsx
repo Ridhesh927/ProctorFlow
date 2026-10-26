@@ -11,7 +11,8 @@ import {
   TrendingUp,
   Settings,
   Sparkles,
-  Briefcase
+  Briefcase,
+  X
 } from 'lucide-react';
 import { getUser, clearAuth } from '../utils/auth';
 import { apiFetch } from '../utils/api';
@@ -75,6 +76,31 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
       setUnreadCount(0);
     } catch (err) {
       console.error('Error marking all as read:', err);
+    }
+  };
+
+  const deleteNotification = async (id: number) => {
+    try {
+      await apiFetch(`/api/notifications/${id}`, { method: 'DELETE' });
+      setNotifications(prev => {
+        const item = prev.find(n => n.id === id);
+        if (item && !item.is_read) {
+          setUnreadCount(u => Math.max(0, u - 1));
+        }
+        return prev.filter(n => n.id !== id);
+      });
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await apiFetch('/api/notifications', { method: 'DELETE' });
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Error clearing all notifications:', err);
     }
   };
 
@@ -163,9 +189,14 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
                     >
                       <div className="dropdown-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h4>Notifications</h4>
-                        {unreadCount > 0 && (
-                          <button onClick={markAllAsRead} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Mark all read</button>
-                        )}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {unreadCount > 0 && (
+                            <button onClick={markAllAsRead} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Mark read</button>
+                          )}
+                          {notifications.length > 0 && (
+                            <button onClick={clearAllNotifications} style={{ background: 'none', border: 'none', color: 'var(--error, #ef4444)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>Clear all</button>
+                          )}
+                        </div>
                       </div>
                       <div className="dropdown-body">
                         {notifications.length > 0 ? (
@@ -188,6 +219,16 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
                                   <p className="notification-desc">{n.message}</p>
                                   <span className="notification-time">{new Date(n.created_at).toLocaleDateString()}</span>
                                 </div>
+                                <button
+                                  className="delete-notification-btn"
+                                  title="Delete notification"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(n.id);
+                                  }}
+                                >
+                                  <X size={14} />
+                                </button>
                                 {!n.is_read && <div className="unread-indicator"></div>}
                               </div>
                             ))}
@@ -483,8 +524,34 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
           background: var(--accent);
           border-radius: 50%;
           position: absolute;
-          top: 1rem;
-          right: 1rem;
+          top: 0.75rem;
+          right: 2rem;
+        }
+
+        .delete-notification-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 4px;
+          border-radius: var(--radius-sm);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: var(--transition-fast);
+          margin-left: 0.5rem;
+          align-self: flex-start;
+        }
+
+        .notification-item:hover .delete-notification-btn {
+          opacity: 0.7;
+        }
+
+        .delete-notification-btn:hover {
+          opacity: 1 !important;
+          color: var(--error, #ef4444);
+          background: rgba(239, 68, 68, 0.1);
         }
 
         .user-profile-brief {

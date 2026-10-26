@@ -55,6 +55,43 @@ exports.markAllRead = async (req, res) => {
     }
 };
 
+// Delete a specific notification
+exports.deleteNotification = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const userType = req.user.role;
+
+        await pool.query(
+            'DELETE FROM notifications WHERE id = ? AND user_id = ? AND user_type = ?',
+            [id, userId, userType]
+        );
+
+        res.json({ success: true, message: 'Notification deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete notification' });
+    }
+};
+
+// Clear all notifications for the user
+exports.clearAllNotifications = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userType = req.user.role;
+
+        await pool.query(
+            'DELETE FROM notifications WHERE user_id = ? AND user_type = ?',
+            [userId, userType]
+        );
+
+        res.json({ success: true, message: 'All notifications cleared successfully' });
+    } catch (error) {
+        console.error('Error clearing notifications:', error);
+        res.status(500).json({ success: false, message: 'Failed to clear notifications' });
+    }
+};
+
 // Internal helper to create a notification
 exports.createNotification = async (userId, userType, title, message, link = null) => {
     try {
