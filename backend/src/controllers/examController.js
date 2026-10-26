@@ -1730,6 +1730,19 @@ exports.uploadBulkQuestions = async (req, res) => {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
         const { examId } = req.body;
 
+        if (examId) {
+            let authQuery = 'SELECT id FROM exams WHERE id = ?';
+            const authParams = [examId];
+            if (!req.user.isMainAdmin) {
+                authQuery += ' AND teacher_id = ?';
+                authParams.push(req.user.id);
+            }
+            const [authCheck] = await pool.query(authQuery, authParams);
+            if (authCheck.length === 0) {
+                return res.status(403).json({ message: 'Unauthorized to modify this exam or exam not found.' });
+            }
+        }
+
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
