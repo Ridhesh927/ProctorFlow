@@ -77,7 +77,13 @@ const buildClassRemediationSuggestions = (topicWeakness = []) =>
         });
 
 const escapeCsvCell = (value) => {
-    const raw = String(value ?? '');
+    let raw = String(value ?? '');
+    
+    // Prevent CSV / Formula Injection
+    if (/^[=+\-@\t\r]/.test(raw)) {
+        raw = "'" + raw;
+    }
+
     if (raw.includes(',') || raw.includes('"') || raw.includes('\n')) {
         return `"${raw.replace(/"/g, '""')}"`;
     }
