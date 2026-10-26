@@ -183,9 +183,11 @@ const InterviewPrepHub = ({ standalone = false }: InterviewPrepHubProps) => {
             });
             const data = await response.json();
             
-            // Navigate directly to the new interview, or refresh list
-            if (data.interviewId) {
-                 navigate(`/student/interview/${data.interviewId}`);
+            // Navigate to coding round first if generated, otherwise to interview
+            if (data.codingId) {
+                navigate(`/student/coding/${data.codingId}`);
+            } else if (data.interviewId) {
+                navigate(`/student/interview/${data.interviewId}`);
             } else {
                 fetchDashboardData();
             }

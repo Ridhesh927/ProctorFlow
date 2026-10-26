@@ -386,10 +386,11 @@ exports.getCodingRound = async (req, res) => {
         if (!rows.length) return res.status(404).json({ message: 'Coding round not found.' });
 
         const [parentInterview] = await pool.query(
-            'SELECT id FROM interviews WHERE coding_id = ? AND student_id = ?',
+            'SELECT id, ai_feedback FROM interviews WHERE coding_id = ? AND student_id = ?',
             [id, studentId]
         );
         const parentInterviewId = parentInterview[0]?.id || null;
+        const parentInterviewCompleted = Boolean(parentInterview[0] && parentInterview[0].ai_feedback !== null);
 
         const round = rows[0];
         // Handle mysql2 auto-parsing
@@ -398,7 +399,15 @@ exports.getCodingRound = async (req, res) => {
             ? (typeof round.student_codes === 'string' ? JSON.parse(round.student_codes) : round.student_codes)
             : { q1: '', q2: '' };
 
-        res.status(200).json({ round: { ...round, questions, student_codes: studentCodes, parent_interview_id: parentInterviewId } });
+        res.status(200).json({ 
+            round: { 
+                ...round, 
+                questions, 
+                student_codes: studentCodes, 
+                parent_interview_id: parentInterviewId,
+                parent_interview_completed: parentInterviewCompleted
+            } 
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

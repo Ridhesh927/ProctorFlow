@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ArrowLeft, BrainCircuit, Code2, CheckCircle, XCircle, Trophy, Download } from 'lucide-react';
+import { Loader2, ArrowLeft, BrainCircuit, Code2, CheckCircle, XCircle, Trophy, Download, Sparkles, ArrowRight } from 'lucide-react';
 import { apiFetch } from '../../utils/api';
 import './CodingResults.css';
 
@@ -14,6 +14,7 @@ interface CodingQuestion {
 interface CodingRound {
     id: number;
     parent_interview_id?: number;
+    parent_interview_completed?: boolean;
     questions: CodingQuestion[];
     student_codes: { q1: string; q2: string };
     language: string;
@@ -146,13 +147,22 @@ const CodingResults = () => {
 
             <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', marginBottom: '20px' }}>
                 {round.parent_interview_id && (
-                    <button 
-                        className="neo-btn-primary" 
-                        onClick={() => navigate(`/student/interview/result/${round.parent_interview_id}`)}
-                        style={{ background: '#10b981', borderColor: '#059669', color: '#fff' }}
-                    >
-                        <BrainCircuit size={16} /> View MCQ Report
-                    </button>
+                    round.parent_interview_completed ? (
+                        <button 
+                            className="neo-btn-primary" 
+                            onClick={() => navigate(`/student/interview/result/${round.parent_interview_id}`)}
+                            style={{ background: '#10b981', borderColor: '#059669', color: '#fff' }}
+                        >
+                            <BrainCircuit size={16} /> View MCQ Report
+                        </button>
+                    ) : (
+                        <button 
+                            className="neo-btn-primary" 
+                            onClick={() => navigate(`/student/interview/${round.parent_interview_id}`)}
+                        >
+                            <Sparkles size={16} /> Proceed to Part 2: MCQ Round <ArrowRight size={16} />
+                        </button>
+                    )
                 )}
                 <button className="neo-btn-primary" onClick={handleDownload}>
                     <Download size={16} /> Download Report
