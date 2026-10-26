@@ -1064,9 +1064,11 @@ exports.submitExam = async (req, res) => {
             [examId, studentId, score, questions.length, correctCount, examTotalMarks, safeCompletionTime]
         );
 
+        const activeSessionId = activeSessionRows[0]?.id;
+
         // Mark session as completed
         await pool.query(
-            'UPDATE exam_sessions SET status = \"completed\", is_suspended = FALSE, end_time = CURRENT_TIMESTAMP WHERE student_id = ? AND exam_id = ? AND status = \"active\"',
+            'UPDATE exam_sessions SET status = "completed", is_suspended = FALSE, end_time = CURRENT_TIMESTAMP WHERE student_id = ? AND exam_id = ? AND status = "active"',
             [studentId, examId]
         );
         const [latestSessionRows] = await pool.query(
@@ -1077,6 +1079,31 @@ exports.submitExam = async (req, res) => {
              LIMIT 1`,
             [studentId, examId]
         );
+
+        // Persist answers into student_responses so item analysis and exam health reflect real submissions
+        const targetSessionId = activeSessionId || latestSessionRows[0]?.id;
+        if (targetSessionId) {
+            const timePerQuestion = questions.length > 0 ? Math.round(safeCompletionTime / questions.length) : 0;
+            for (const q of questions) {
+                const studentAnswer = safeAnswers[q.id] !== undefined ? safeAnswers[q.id] : safeAnswers[String(q.id)];
+                const selectedOpt = studentAnswer !== undefined && studentAnswer !== null ? Number(studentAnswer) : null;
+                const [existingResp] = await pool.query(
+                    'SELECT id FROM student_responses WHERE session_id = ? AND question_id = ?',
+                    [targetSessionId, q.id]
+                );
+                if (existingResp.length > 0) {
+                    await pool.query(
+                        'UPDATE student_responses SET selected_option = ?, time_spent = ? WHERE id = ?',
+                        [selectedOpt, timePerQuestion, existingResp[0].id]
+                    );
+                } else {
+                    await pool.query(
+                        'INSERT INTO student_responses (session_id, question_id, selected_option, time_spent) VALUES (?, ?, ?, ?)',
+                        [targetSessionId, q.id, selectedOpt, timePerQuestion]
+                    );
+                }
+            }
+        }
 
         if (latestSessionRows.length > 0) {
             try {

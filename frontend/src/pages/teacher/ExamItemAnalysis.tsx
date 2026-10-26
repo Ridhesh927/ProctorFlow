@@ -19,7 +19,8 @@ import {
     ChevronLeft,
     BrainCircuit,
     CheckCircle2,
-    HelpCircle
+    HelpCircle,
+    Sparkles
 } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { apiFetch } from '../../utils/api';
@@ -80,27 +81,37 @@ const ExamItemAnalysis = () => {
                 </header>
 
                 <main className="analysis-grid">
+                    {data.aiSummary && (
+                        <div className="ai-summary-banner neo-card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', borderLeft: '4px solid var(--accent)' }}>
+                            <Sparkles size={24} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
+                            <div>
+                                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--text-primary)' }}>AI Health & Performance Insight</h3>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{data.aiSummary}</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Key Metrics Cards */}
                     <div className="metrics-summary">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="metric-card neo-card">
                             <TrendingDown size={24} className="text-error" />
                             <div>
                                 <h3>Hardest Question</h3>
-                                <p>{data.metrics.hardestQuestions[0]?.successRate || 'N/A'}% Success</p>
+                                <p>{data.metrics?.hardestQuestions?.[0]?.successRate !== undefined ? `${data.metrics.hardestQuestions[0].successRate}% Success` : 'None (<40%)'}</p>
                             </div>
                         </motion.div>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="metric-card neo-card">
                             <AlertCircle size={24} className="text-warning" />
                             <div>
                                 <h3>Ambiguous Items</h3>
-                                <p>{data.metrics.ambiguousQuestions.length} Items Flagged</p>
+                                <p>{data.metrics?.ambiguousQuestions?.length ?? 0} Items Flagged</p>
                             </div>
                         </motion.div>
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="metric-card neo-card">
                             <Clock size={24} className="text-accent" />
                             <div>
                                 <h3>Avg. Time/Question</h3>
-                                <p>{(data.allQuestions.reduce((a: any, b: any) => a + b.avgTime, 0) / data.allQuestions.length).toFixed(1)}s</p>
+                                <p>{(data.allQuestions && data.allQuestions.length > 0 ? (data.allQuestions.reduce((a: any, b: any) => a + Number(b.avgTime || 0), 0) / data.allQuestions.length) : 0).toFixed(1)}s</p>
                             </div>
                         </motion.div>
                     </div>
