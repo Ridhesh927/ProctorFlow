@@ -5,10 +5,20 @@ const authController = require('../controllers/authController');
 const { authMiddleware, roleMiddleware, mainAdminMiddleware } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const authValidation = require('../validations/auth.validation');
+const rateLimit = require('express-rate-limit');
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === 'test' ? 1000 : 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many login attempts, please try again after 15 minutes' },
+    skip: () => process.env.NODE_ENV === 'test'
+});
 
 // Public routes - Login only
-router.post('/teacher/login', validate(authValidation.teacherLogin), authController.loginTeacher);
-router.post('/student/login', validate(authValidation.studentLogin), authController.loginStudent);
+router.post('/teacher/login', loginLimiter, validate(authValidation.teacherLogin), authController.loginTeacher);
+router.post('/student/login', loginLimiter, validate(authValidation.studentLogin), authController.loginStudent);
 
 // Public registration disabled - only admins can create accounts
 // router.post('/teacher/register', authController.registerTeacher);
