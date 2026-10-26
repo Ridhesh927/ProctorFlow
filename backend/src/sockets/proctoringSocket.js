@@ -1,5 +1,6 @@
 const { pool } = require('../config/db');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 // Track pending terminations for disconnected student sessions: sessionId -> Timeout
 const pendingTerminations = new Map();
@@ -14,7 +15,7 @@ const verifyRole = (socket, allowedRoles) => {
 
 module.exports = (io) => {
     // 1. Socket Authentication Middleware
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
         let token = socket.handshake.auth?.token;
 
         if (!token && socket.handshake.headers?.cookie) {
@@ -41,6 +42,14 @@ module.exports = (io) => {
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+            const table = decoded.role === 'teacher' ? 'teachers' : 'students';
+            const [rows] = await pool.query(`SELECT last_token, is_blocked FROM ${table} WHERE id = ?`, [decoded.id]);
+
+            if (rows.length === 0 || rows[0].last_token !== hashedToken || rows[0].is_blocked) {
+                return next(new Error('Authentication error: Session invalidated or expired'));
+            }
+
             socket.user = decoded; 
             next();
         } catch (err) {

@@ -32,14 +32,18 @@ const authMiddleware = async (req, res, next) => {
 
         const table = decoded.role === 'teacher' ? 'teachers' : 'students';
         const query = decoded.role === 'teacher'
-            ? 'SELECT last_token, is_main_admin FROM teachers WHERE id = ?'
-            : 'SELECT last_token, FALSE as is_main_admin FROM students WHERE id = ?';
+            ? 'SELECT last_token, is_main_admin, is_blocked FROM teachers WHERE id = ?'
+            : 'SELECT last_token, FALSE as is_main_admin, is_blocked FROM students WHERE id = ?';
         const [rows] = await pool.query(query, [decoded.id]);
 
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
         if (rows.length === 0 || rows[0].last_token !== hashedToken) {
             return res.status(401).json({ message: 'Session expired or logged in on another device' });
+        }
+
+        if (rows[0].is_blocked) {
+            return res.status(403).json({ message: 'Account suspended. Please contact administrator.' });
         }
 
         req.user.isMainAdmin = !!rows[0].is_main_admin;
