@@ -64,6 +64,70 @@ const normalizeTestCaseStats = (rawStats, fallbackTotal = 6) => {
     };
 };
 
+const FORBIDDEN_PATTERNS = {
+    python: [
+        /\bimport\s+(os|subprocess|sys|shutil|pty|socket|urllib|requests|builtins)\b/i,
+        /\bfrom\s+(os|subprocess|sys|shutil|pty|socket|urllib|requests|builtins)\b/i,
+        /__import__\s*\(/i,
+        /\beval\s*\(/i,
+        /\bexec\s*\(/i,
+        /\bopen\s*\(/i,
+        /\bos\.(system|popen|environ|remove|rmdir|mkdir|chmod|spawn)/i,
+        /\bsubprocess\./i,
+        /\bsys\.modules/i
+    ],
+    javascript: [
+        /\bchild_process\b/i,
+        /\brequire\s*\(\s*['"](child_process|fs|path|os|net|http|https|crypto)['"]\s*\)/i,
+        /\bprocess\.(env|exit|kill|cwd|chdir|binding|mainModule)/i,
+        /\beval\s*\(/i,
+        /\bFunction\s*\(/i,
+        /\bimport\s+.*from\s+['"](child_process|fs|os|net|http)['"]/i
+    ],
+    cpp: [
+        /#include\s*<cstdlib>/i,
+        /#include\s*<unistd\.h>/i,
+        /#include\s*<windows\.h>/i,
+        /#include\s*<sys\/socket\.h>/i,
+        /\bsystem\s*\(/i,
+        /\bpopen\s*\(/i,
+        /\bfork\s*\(/i,
+        /\bexecl\s*\(/i
+    ],
+    java: [
+        /Runtime\.getRuntime/i,
+        /ProcessBuilder/i,
+        /System\.getenv/i,
+        /java\.lang\.reflect/i,
+        /java\.io\.(File|FileInputStream|FileOutputStream)/i
+    ]
+};
+
+const COMMON_FORBIDDEN = [
+    /\.\.\//,
+    /\.\.\\/,
+    /\.env\b/i,
+    /\/etc\//i,
+    /\/proc\//i,
+    /\bpowershell\b/i,
+    /\bcmd(\.exe)?\b/i
+];
+
+const checkSecurityViolations = (language, code) => {
+    for (const pattern of COMMON_FORBIDDEN) {
+        if (pattern.test(code)) {
+            return 'Access denied: restricted filesystem or shell pattern detected.';
+        }
+    }
+    const langPatterns = FORBIDDEN_PATTERNS[language] || [];
+    for (const pattern of langPatterns) {
+        if (pattern.test(code)) {
+            return `Access denied: restricted module or system call detected in ${language} code.`;
+        }
+    }
+    return null;
+};
+
 exports.executeCode = async (req, res) => {
     try {
         const { language, sourceCode, stdin = '', codingId, questionIndex } = req.body;
@@ -78,6 +142,26 @@ exports.executeCode = async (req, res) => {
         const ext = EXTENSIONS[language];
         if (!ext) {
             return res.status(400).json({ message: 'Unsupported language' });
+        }
+
+        // Security check against RCE / unauthorized system calls
+        const securityViolation = checkSecurityViolations(language, sourceCode || '');
+        if (securityViolation) {
+            return res.json({
+                stdout: '',
+                stderr: securityViolation,
+                compile_output: '',
+                status: { id: 4, description: 'Security Violation' },
+                ai_test_status: 'fail',
+                ai_test_feedback: securityViolation,
+                test_case_stats: {
+                    total_test_cases: 6,
+                    completed_test_cases: 0,
+                    passed_test_cases: 0,
+                    failed_test_cases: 6,
+                    remaining_test_cases: 0
+                }
+            });
         }
 
         // Create a unique temporary file
@@ -108,9 +192,20 @@ exports.executeCode = async (req, res) => {
             command = `javac ${fileName} && java Solution`;
         }
 
+        // Safe isolated environment: never pass sensitive process.env keys (JWT_SECRET, DB passwords, etc.)
+        const safeEnv = {
+            PATH: process.env.PATH || '',
+            SYSTEMROOT: process.env.SYSTEMROOT || '',
+            WINDIR: process.env.WINDIR || '',
+            TEMP: tempDir,
+            TMP: tempDir,
+            NODE_ENV: 'sandbox',
+            PYTHONUNBUFFERED: '1'
+        };
+
         // Execute code locally via Promise
         const executeLocal = () => new Promise((resolve) => {
-            exec(command, { cwd: tempDir, timeout: 5000 }, async (error, stdout, stderr) => {
+            exec(command, { cwd: tempDir, timeout: 4000, maxBuffer: 1024 * 256, env: safeEnv }, async (error, stdout, stderr) => {
                 try { await fs.rm(tempDir, { recursive: true, force: true }); } catch (e) {}
 
                 if (error) {
