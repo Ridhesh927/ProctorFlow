@@ -137,6 +137,21 @@ button {
   background: var(--surface);
 }
 
+select {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+select option {
+  background-color: #1d1912;
+  color: #FDFBD4;
+}
+
+[data-theme='light'] select option {
+  background-color: #ffffff;
+  color: #14120e;
+}
+
 .neo-btn-primary {
   padding: 0.75rem 1.5rem;
   background: var(--accent);
