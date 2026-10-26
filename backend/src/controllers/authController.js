@@ -228,7 +228,8 @@ exports.changePassword = async (req, res) => {
 // Admin: Create Teacher
 exports.adminCreateTeacher = async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const username = req.body.username || req.body.name;
+        const { email, password } = req.body;
 
         if (!username || !email || !password) {
             return res.status(400).json({ message: 'All fields are required' });
@@ -257,19 +258,35 @@ exports.adminCreateTeacher = async (req, res) => {
 
 // Admin: Create Student
 exports.adminCreateStudent = async (req, res) => {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    let lockAcquired = false;
+
     try {
-        const { username, email, password, prn_number, department, year } = req.body;
+        const username = req.body.username || req.body.name;
+        const { email, password, prn_number, department, year } = req.body;
 
         if (!username || !email || !password || !prn_number) {
+            await connection.rollback();
             return res.status(400).json({ message: 'All fields are required' });
         }
 
         let isDemoCreated = false;
         if (req.user && req.user.role === 'teacher') {
-            const [teacherRows] = await pool.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
+            const [teacherRows] = await connection.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
             if (teacherRows.length > 0 && teacherRows[0].email === 'teacher@test.com') {
-                const [countRows] = await pool.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
+                const [lockResult] = await connection.query("SELECT GET_LOCK('demo_student_creation', 5) as lock_acquired");
+                if (lockResult[0].lock_acquired !== 1) {
+                    await connection.rollback();
+                    return res.status(503).json({ message: 'System busy, please try again.' });
+                }
+                lockAcquired = true;
+
+                const [countRows] = await connection.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
                 if (countRows[0].count >= 3) {
+                    await connection.query("SELECT RELEASE_LOCK('demo_student_creation')");
+                    lockAcquired = false;
+                    await connection.rollback();
                     return res.status(403).json({ message: 'Demo teacher can only create up to 3 student accounts.' });
                 }
                 isDemoCreated = true;
@@ -278,10 +295,16 @@ exports.adminCreateStudent = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const [result] = await pool.query(
+        const [result] = await connection.query(
             'INSERT INTO students (username, email, password, prn_number, department, year, created_by_demo) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [username, email, hashedPassword, prn_number, department || null, year || null, isDemoCreated]
         );
+
+        await connection.commit();
+        if (lockAcquired) {
+            await connection.query("SELECT RELEASE_LOCK('demo_student_creation')");
+            lockAcquired = false;
+        }
 
         logger('ADMIN_CREATE_STUDENT', `Admin created student: ${username} (${email})`, { id: result.insertId, prn: prn_number });
 
@@ -290,28 +313,49 @@ exports.adminCreateStudent = async (req, res) => {
             student: { id: result.insertId, username, email, prn_number, department, year }
         });
     } catch (error) {
+        await connection.rollback();
+        if (lockAcquired) {
+            await connection.query("SELECT RELEASE_LOCK('demo_student_creation')").catch(() => {});
+        }
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(400).json({ message: 'Email or PRN already exists' });
         }
         sendInternalError(res);
+    } finally {
+        connection.release();
     }
 };
 
 // Admin: Bulk Create Students
 exports.adminCreateBulkStudents = async (req, res) => {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    let lockAcquired = false;
+
     try {
         const { students } = req.body; // Array of {username, email, password, prn_number}
 
         if (!Array.isArray(students) || students.length === 0) {
+            await connection.rollback();
             return res.status(400).json({ message: 'Students array is required' });
         }
 
         let isDemoCreated = false;
         if (req.user && req.user.role === 'teacher') {
-            const [teacherRows] = await pool.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
+            const [teacherRows] = await connection.query('SELECT email FROM teachers WHERE id = ?', [req.user.id]);
             if (teacherRows.length > 0 && teacherRows[0].email === 'teacher@test.com') {
-                const [countRows] = await pool.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
+                const [lockResult] = await connection.query("SELECT GET_LOCK('demo_student_creation', 5) as lock_acquired");
+                if (lockResult[0].lock_acquired !== 1) {
+                    await connection.rollback();
+                    return res.status(503).json({ message: 'System busy, please try again.' });
+                }
+                lockAcquired = true;
+
+                const [countRows] = await connection.query('SELECT COUNT(*) as count FROM students WHERE created_by_demo = TRUE');
                 if (countRows[0].count + students.length > 3) {
+                    await connection.query("SELECT RELEASE_LOCK('demo_student_creation')");
+                    lockAcquired = false;
+                    await connection.rollback();
                     return res.status(403).json({ message: `Demo teacher can only create up to 3 student accounts total. Current count: ${countRows[0].count}.` });
                 }
                 isDemoCreated = true;
@@ -330,7 +374,7 @@ exports.adminCreateBulkStudents = async (req, res) => {
                 }
 
                 const hashedPassword = await bcrypt.hash(password, 10);
-                const [result] = await pool.query(
+                const [result] = await connection.query(
                     'INSERT INTO students (username, email, password, prn_number, department, year, created_by_demo) VALUES (?, ?, ?, ?, ?, ?, ?)',
                     [username, email, hashedPassword, prn_number, department || null, year || null, isDemoCreated]
                 );
@@ -341,6 +385,12 @@ exports.adminCreateBulkStudents = async (req, res) => {
             }
         }
 
+        await connection.commit();
+        if (lockAcquired) {
+            await connection.query("SELECT RELEASE_LOCK('demo_student_creation')");
+            lockAcquired = false;
+        }
+
         logger('ADMIN_BULK_STUDENTS', `Bulk student creation: ${results.success.length} success, ${results.failed.length} failed`);
 
         res.status(201).json({
@@ -348,7 +398,13 @@ exports.adminCreateBulkStudents = async (req, res) => {
             results
         });
     } catch (error) {
+        await connection.rollback();
+        if (lockAcquired) {
+            await connection.query("SELECT RELEASE_LOCK('demo_student_creation')").catch(() => {});
+        }
         sendInternalError(res);
+    } finally {
+        connection.release();
     }
 };
 

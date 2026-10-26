@@ -25,17 +25,22 @@ const changePassword = Joi.object({
 });
 
 const createTeacher = Joi.object({
-    name: Joi.string().required(),
+    username: Joi.string().optional(),
+    name: Joi.string().optional(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
     isMainAdmin: Joi.boolean().optional()
-});
+}).or('username', 'name');
 
 const createStudent = Joi.object({
-    name: Joi.string().required(),
+    username: Joi.string().optional(),
+    name: Joi.string().optional(),
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).required()
-});
+    password: Joi.string().min(6).required(),
+    prn_number: Joi.string().required(),
+    department: Joi.string().allow('', null).optional(),
+    year: Joi.string().allow('', null).optional()
+}).or('username', 'name');
 
 module.exports = {
     teacherLogin,
