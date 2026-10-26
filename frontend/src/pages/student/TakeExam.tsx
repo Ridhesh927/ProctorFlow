@@ -697,8 +697,10 @@ const TakeExam = () => {
           </div>
         </div>
         <style>{`
-          .fullscreen-guard { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%); }
-          .guard-content { max-width: 520px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 4rem; border: 1px solid rgba(255,255,255,0.05); background: rgba(20, 20, 22, 0.9); border-radius: var(--radius-md); }
+          .fullscreen-guard { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, var(--surface-low) 0%, var(--bg) 100%); }
+          .guard-content { max-width: 520px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 3rem 2.5rem; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); border-radius: var(--radius-md); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25); }
+          .guard-content h1 { color: var(--text-primary); margin: 0; }
+          .guard-content p { color: var(--text-secondary); line-height: 1.6; margin: 0; }
         `}</style>
       </div>
     );
@@ -714,8 +716,10 @@ const TakeExam = () => {
           <button onClick={() => navigate('/student/exams')} className="neo-btn-primary">Back to Exams</button>
         </div>
         <style>{`
-          .fullscreen-guard { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%); }
-          .guard-content { max-width: 520px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 4rem; border: 1px solid rgba(255,255,255,0.05); background: rgba(20, 20, 22, 0.9); border-radius: var(--radius-md); }
+          .fullscreen-guard { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, var(--surface-low) 0%, var(--bg) 100%); }
+          .guard-content { max-width: 520px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 3rem 2.5rem; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); border-radius: var(--radius-md); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25); }
+          .guard-content h1 { color: var(--text-primary); margin: 0; }
+          .guard-content p { color: var(--text-secondary); line-height: 1.6; margin: 0; }
           .text-error { color: #ef4444; }
         `}</style>
       </div>
@@ -836,7 +840,7 @@ const TakeExam = () => {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            background: radial-gradient(circle at center, var(--surface-low) 0%, var(--bg) 100%);
             position: relative;
           }
           .guard-content {
@@ -846,10 +850,22 @@ const TakeExam = () => {
             flex-direction: column;
             align-items: center;
             gap: 1.5rem;
-            padding: 4rem;
+            padding: 3rem 2.5rem;
             z-index: 1;
-            border: 1px solid rgba(255,255,255,0.05);
-            background: rgba(20, 20, 22, 0.9);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+          }
+          .guard-content h1 {
+            color: var(--text-primary);
+            margin: 0;
+          }
+          .guard-content p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
           }
           .text-warning { color: #f97316; }
           .pulse-warning { animation: warning-pulse 1.5s infinite; }

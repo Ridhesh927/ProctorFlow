@@ -477,8 +477,8 @@ const TakeCodingRound = () => {
                         </>
                     ) : (
                         <>
-                            <AlertTriangle size={48} style={{ color: '#6366f1' }} />
-                            <h1 style={{ color: 'white' }}>Secure Session Required</h1>
+                            <AlertTriangle size={48} className="text-accent" />
+                            <h1>Secure Session Required</h1>
                             <p>This coding assessment requires an immersive environment. Please enable fullscreen to commence.</p>
                         </>
                     )}
@@ -496,7 +496,7 @@ const TakeCodingRound = () => {
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+                        background: radial-gradient(circle at center, var(--surface-low) 0%, var(--bg) 100%);
                         position: fixed;
                         top: 0;
                         left: 0;
@@ -509,10 +509,21 @@ const TakeCodingRound = () => {
                         flex-direction: column;
                         align-items: center;
                         gap: 1.5rem;
-                        padding: 4rem;
-                        border: 1px solid rgba(255,255,255,0.05);
-                        background: rgba(20, 20, 22, 0.9);
+                        padding: 3rem 2.5rem;
+                        border: 1px solid var(--border);
+                        background: var(--surface);
+                        color: var(--text-primary);
                         border-radius: 12px;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+                    }
+                    .guard-content h1 {
+                        color: var(--text-primary);
+                        margin: 0;
+                    }
+                    .guard-content p {
+                        color: var(--text-secondary);
+                        line-height: 1.6;
+                        margin: 0;
                     }
                     .warning-pill {
                         background: rgba(249, 115, 22, 0.1);
