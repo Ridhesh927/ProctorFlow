@@ -484,7 +484,27 @@ const CreateExam = () => {
           
           .questions-list { display: flex; flex-direction: column; gap: 2rem; }
           .question-editor { padding: 2rem; background: var(--surface); display: flex; flex-direction: column; gap: 1.5rem; }
-          .q-edit-header { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); opacity: 0.8; }
+          .q-edit-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); }
+          .q-edit-header .text-btn.danger {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            border-radius: var(--radius-sm);
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .q-edit-header .text-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: rgba(239, 68, 68, 0.6);
+            color: #f87171;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+          }
           .q-text-area { min-height: 80px; resize: vertical; margin-bottom: 1rem; }
           
           .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

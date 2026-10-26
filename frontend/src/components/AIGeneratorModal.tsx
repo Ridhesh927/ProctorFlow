@@ -431,6 +431,26 @@ const AIGeneratorModal: React.FC<AIGeneratorModalProps> = ({ isOpen, onClose, on
                     .generated-questions-list { display: flex; flex-direction: column; gap: 1rem; }
                     .generated-q-card { background: var(--surface-high); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1.25rem; }
                     .q-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+                    .delete-btn {
+                        background: rgba(239, 68, 68, 0.12);
+                        border: 1px solid rgba(239, 68, 68, 0.3);
+                        color: #ef4444;
+                        border-radius: var(--radius-sm);
+                        width: 32px;
+                        height: 32px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                    }
+                    .delete-btn:hover {
+                        background: rgba(239, 68, 68, 0.25);
+                        border-color: rgba(239, 68, 68, 0.6);
+                        color: #f87171;
+                        transform: translateY(-1px);
+                        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+                    }
                     .q-num { font-size: 0.75rem; font-weight: 700; background: var(--surface-low); padding: 0.25rem 0.5rem; border-radius: 4px; color: var(--text-secondary); }
                     .q-text { font-weight: 500; margin: 0 0 1rem 0; line-height: 1.5; }
                     .q-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
