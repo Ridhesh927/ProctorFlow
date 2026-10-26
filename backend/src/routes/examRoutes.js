@@ -2,8 +2,28 @@ const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/examController');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
+const path = require('path');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowedExts = ['.csv', '.xlsx', '.xls', '.json'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        const allowedMimes = [
+            'text/csv',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel',
+            'application/json'
+        ];
+        if (allowedMimes.includes(file.mimetype) || allowedExts.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only CSV, Excel, or JSON files are allowed.'), false);
+        }
+    }
+});
 const validate = require('../middleware/validate');
 const examValidation = require('../validations/exam.validation');
 

@@ -99,6 +99,14 @@ app.use('/api/coding', codingRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+// Error handling middleware for file uploads
+app.use((err, _req, res, next) => {
+    if (err && (err.name === 'MulterError' || err.message?.includes('Invalid file') || err.message?.includes('File too large') || err.code === 'LIMIT_FILE_SIZE')) {
+        return res.status(400).json({ message: err.message });
+    }
+    next(err);
+});
+
 // Initialize Database
 if (require.main === module) {
     initDB();

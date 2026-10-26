@@ -14,7 +14,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-    // 1. Validate the MIME type (Content-Type header)
+    // 1. Strictly validate MIME type
     const allowedMimeTypes = [
         'application/pdf',
         'application/msword', // .doc
@@ -22,21 +22,27 @@ const fileFilter = (_req, file, cb) => {
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error('Invalid content type. Only PDF, DOC, and DOCX are allowed.'), false);
+        return cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'), false);
     }
 
-    // 2. Validate the Extension as a secondary fallback
+    // 2. Validate file extension
     const allowedExtensions = ['.pdf', '.doc', '.docx'];
     const ext = path.extname(file.originalname).toLowerCase();
 
-    if (allowedExtensions.includes(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Invalid file extension.'), false);
+    if (!allowedExtensions.includes(ext)) {
+        return cb(new Error('Invalid file extension.'), false);
     }
+
+    cb(null, true);
 };
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 const validateFileType = async (req, res, next) => {
     if (!req.file) return next();
@@ -47,10 +53,10 @@ const validateFileType = async (req, res, next) => {
     try {
         const fileType = await import('file-type');
         const type = await fileType.fileTypeFromFile(safePath);
-        
+
         const allowedMimeTypes = [
-            'application/pdf', 
-            'application/msword', 
+            'application/pdf',
+            'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ];
 
@@ -58,7 +64,7 @@ const validateFileType = async (req, res, next) => {
             if (fs.existsSync(safePath)) fs.unlinkSync(safePath); // Delete invalid file
             return res.status(400).json({ message: 'Invalid file type. Only true PDF, DOC, DOCX files are allowed.' });
         }
-        
+
         next();
     } catch (err) {
         if (req.file && fs.existsSync(safePath)) fs.unlinkSync(safePath);
@@ -66,6 +72,7 @@ const validateFileType = async (req, res, next) => {
     }
 };
 
-module.exports = {
-    single: (field) => [upload.single(field), validateFileType]
-};
+const originalSingle = upload.single.bind(upload);
+upload.single = (field) => [originalSingle(field), validateFileType];
+
+module.exports = upload;

@@ -2,8 +2,22 @@ const express = require('express');
 const router = express.Router();
 const interviewController = require('../controllers/interviewController');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
+const path = require('path');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/') || allowedExts.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid resume file type. Only PDF and images are allowed.'), false);
+        }
+    }
+});
 
 // All these routes are strictly for students preparing for interviews
 router.use(authMiddleware);
