@@ -12,8 +12,8 @@ router.post('/apply/:jobId', authMiddleware, roleMiddleware(['student']), resume
 // Teacher/Admin routes
 router.post('/create', authMiddleware, roleMiddleware(['teacher', 'admin']), jobController.createJob);
 router.get('/:jobId/applications', authMiddleware, roleMiddleware(['teacher', 'admin']), jobController.getJobApplications);
-router.get('/applications/:appId/resume', authMiddleware, roleMiddleware(['teacher', 'admin']), jobController.downloadResume);
+router.get('/applications/:appId/resume', authMiddleware, jobController.downloadResume);
 router.delete('/:jobId', authMiddleware, roleMiddleware(['teacher', 'admin']), jobController.deleteJob);
-router.delete('/applications/:appId', authMiddleware, roleMiddleware(['teacher', 'admin']), jobController.deleteApplication);
+router.delete('/applications/:appId', authMiddleware, jobController.deleteApplication);
 
 module.exports = router;

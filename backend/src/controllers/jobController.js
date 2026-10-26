@@ -159,6 +159,15 @@ const jobController = {
     getJobApplications: async (req, res) => {
         try {
             const jobId = req.params.jobId;
+            const userId = req.user.id;
+
+            // Authorization check
+            const [jobCheck] = await pool.query('SELECT created_by FROM jobs WHERE id = ?', [jobId]);
+            if (jobCheck.length === 0) return res.status(404).json({ message: 'Job not found' });
+            if (jobCheck[0].created_by !== userId && !req.user.isMainAdmin) {
+                return res.status(403).json({ message: 'Unauthorized to view applications for this job' });
+            }
+
             const [rows] = await pool.query(
                 `SELECT ja.id, ja.status, ja.applied_at, ja.resume_filename, ja.ai_match_score,
                         s.username as student_name, s.email
@@ -177,8 +186,14 @@ const jobController = {
     downloadResume: async (req, res) => {
         try {
             const { appId } = req.params;
+            const userId = req.user.id;
+
+            // Fetch application and the job it belongs to
             const [rows] = await pool.query(
-                'SELECT resume_filename FROM job_applications WHERE id = ?',
+                `SELECT ja.resume_filename, ja.student_id, j.created_by as teacher_id 
+                 FROM job_applications ja 
+                 JOIN jobs j ON ja.job_id = j.id 
+                 WHERE ja.id = ?`,
                 [appId]
             );
 
@@ -186,7 +201,16 @@ const jobController = {
                 return res.status(404).json({ message: 'No resume attached to this application' });
             }
 
-            const filePath = path.join(__dirname, '../../uploads/resumes', rows[0].resume_filename);
+            const isOwner = req.user.role === 'student' && rows[0].student_id === userId;
+            const isJobCreator = req.user.role === 'teacher' && rows[0].teacher_id === userId;
+
+            if (!isOwner && !isJobCreator && !req.user.isMainAdmin) {
+                return res.status(403).json({ message: 'Unauthorized to view this resume' });
+            }
+
+            const filename = path.basename(rows[0].resume_filename);
+            const filePath = path.resolve(RESUMES_UPLOAD_ROOT, filename);
+
             if (!fs.existsSync(filePath)) {
                 return res.status(404).json({ message: 'Resume file not found on server' });
             }
@@ -210,7 +234,6 @@ const jobController = {
             }
             
             await pool.query('DELETE FROM jobs WHERE id = ?', [jobId]);
-            // job_applications will be cascade deleted if DB set up or just orphaned. Best to explicitly delete:
             await pool.query('DELETE FROM job_applications WHERE job_id = ?', [jobId]);
             
             res.json({ message: 'Job deleted successfully' });
@@ -222,13 +245,31 @@ const jobController = {
     deleteApplication: async (req, res) => {
         try {
             const appId = req.params.appId;
-            
-            // Remove from DB (and delete resume optionally)
-            const [apps] = await pool.query('SELECT resume_filename FROM job_applications WHERE id = ?', [appId]);
-            if (apps.length > 0 && apps[0].resume_filename) {
-                fs.unlink(path.join(__dirname, '../../uploads/resumes', apps[0].resume_filename), () => {});
+            const userId = req.user.id;
+
+            const [apps] = await pool.query(
+                `SELECT ja.resume_filename, ja.student_id, j.created_by as teacher_id 
+                 FROM job_applications ja 
+                 JOIN jobs j ON ja.job_id = j.id 
+                 WHERE ja.id = ?`,
+                [appId]
+            );
+
+            if (apps.length === 0) {
+                return res.status(404).json({ message: 'Application not found' });
             }
-            
+
+            const isOwner = req.user.role === 'student' && apps[0].student_id === userId;
+            const isJobCreator = req.user.role === 'teacher' && apps[0].teacher_id === userId;
+
+            if (!isOwner && !isJobCreator && !req.user.isMainAdmin) {
+                return res.status(403).json({ message: 'Unauthorized to delete this application' });
+            }
+
+            if (apps[0].resume_filename) {
+                safeUnlinkResume(apps[0].resume_filename);
+            }
+
             await pool.query('DELETE FROM job_applications WHERE id = ?', [appId]);
             res.json({ message: 'Application deleted successfully' });
         } catch (error) {
