@@ -126,5 +126,21 @@ describe('Exam Routes (/api/exams)', () => {
             expect(result).toBeDefined();
             expect(result.score).toBe(10);
         });
+
+        it('should allow teacher to fetch exam result script', async () => {
+            const resultsResponse = await request(app)
+                .get('/api/exams/teacher/results')
+                .set('Cookie', [`auth_token=${teacherToken}`]);
+            const result = resultsResponse.body.results.find(r => r.exam_id === examId);
+
+            const scriptResponse = await request(app)
+                .get(`/api/exams/teacher/result/${result.id}/script`)
+                .set('Cookie', [`auth_token=${teacherToken}`]);
+
+            expect(scriptResponse.status).toBe(200);
+            expect(scriptResponse.body.result).toBeDefined();
+            expect(scriptResponse.body.questions).toBeDefined();
+            expect(scriptResponse.body.questions.length).toBeGreaterThan(0);
+        });
     });
 });

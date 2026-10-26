@@ -2178,9 +2178,9 @@ exports.getResultScript = async (req, res) => {
         
         // 1. Get the result details with student info
         const [results] = await pool.query(
-            `SELECT er.*, u.username, u.email, e.title as exam_title 
+            `SELECT er.*, s.username, s.email, e.title as exam_title, e.teacher_id 
              FROM exam_results er
-             JOIN users u ON er.student_id = u.id
+             JOIN students s ON er.student_id = s.id
              JOIN exams e ON er.exam_id = e.id
              WHERE er.id = ?`,
             [resultId]
@@ -2192,22 +2192,60 @@ exports.getResultScript = async (req, res) => {
 
         const resultRecord = results[0];
 
-        // 2. Get the student responses joined with questions
+        // Authorization check
+        if (req.user.role === 'student' && resultRecord.student_id !== req.user.id) {
+            return res.status(403).json({ error: "Unauthorized to view this result" });
+        }
+        if (req.user.role === 'teacher' && !req.user.isMainAdmin && resultRecord.teacher_id !== req.user.id) {
+            return res.status(403).json({ error: "Unauthorized to view this result" });
+        }
+
+        // 2. Find the session for this result
+        const [sessionRows] = await pool.query(
+            `SELECT id FROM exam_sessions 
+             WHERE exam_id = ? AND student_id = ? 
+             ORDER BY end_time DESC, id DESC 
+             LIMIT 1`,
+            [resultRecord.exam_id, resultRecord.student_id]
+        );
+        const sessionId = sessionRows[0]?.id || null;
+
+        // 3. Get all questions for the exam and any recorded response for this session
         const [responses] = await pool.query(
-            `SELECT sr.*, q.question, q.options, q.correct_answer, q.topic, q.marks
-             FROM student_responses sr
-             JOIN exam_questions q ON sr.question_id = q.id
-             WHERE sr.result_id = ?
+            `SELECT 
+                q.id as question_id,
+                q.question,
+                q.options,
+                q.correct_answer,
+                q.topic,
+                q.marks,
+                sr.selected_option,
+                sr.time_spent
+             FROM exam_questions q
+             LEFT JOIN student_responses sr ON sr.question_id = q.id AND sr.session_id = ?
+             WHERE q.exam_id = ?
              ORDER BY q.id ASC`,
-            [resultId]
+            [sessionId, resultRecord.exam_id]
         );
 
         res.json({
             result: resultRecord,
-            questions: responses.map(r => ({
-                ...r,
-                options: JSON.parse(r.options)
-            }))
+            questions: responses.map(r => {
+                const parsedOptions = safeJsonParse(r.options, typeof r.options === 'string' ? JSON.parse(r.options) : r.options);
+                const selectedOpt = r.selected_option !== null && r.selected_option !== undefined ? Number(r.selected_option) : null;
+                const isCorrect = selectedOpt !== null && selectedOpt === Number(r.correct_answer);
+                return {
+                    question_id: r.question_id,
+                    question: r.question,
+                    options: Array.isArray(parsedOptions) ? parsedOptions : [],
+                    correct_answer: Number(r.correct_answer),
+                    topic: r.topic || 'General',
+                    marks: Number(r.marks || 1),
+                    selected_option: selectedOpt,
+                    is_correct: isCorrect,
+                    time_spent: Number(r.time_spent || 0)
+                };
+            })
         });
     } catch (error) {
         console.error("GET_SCRIPT_ERROR", error);
