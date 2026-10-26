@@ -922,6 +922,23 @@ exports.getExamDetails = async (req, res) => {
 
         const exam = rows[0];
 
+        if (exam.is_deleted) {
+            return res.status(404).json({ message: 'Exam not found' });
+        }
+
+        // Ensure user is authorized if they are a student (Fix IDOR on Exam Details)
+        if (req.user.role === 'student') {
+            const [studentRows] = await pool.query('SELECT department, year FROM students WHERE id = ?', [req.user.id]);
+            const student = studentRows[0] || {};
+            
+            if (exam.target_department && exam.target_department !== student.department) {
+                return res.status(403).json({ message: 'Unauthorized: Exam is designated for a different department' });
+            }
+            if (exam.target_year && exam.target_year !== student.year) {
+                return res.status(403).json({ message: 'Unauthorized: Exam is designated for a different academic year' });
+            }
+        }
+
         // Security Checks
         if (exam.status !== 'Published' && exam.status !== 'Scheduled') {
             return res.status(403).json({ message: 'Exam is not available' });
